@@ -19,7 +19,7 @@ cd app
 cp ../.env .env
 
 echo "=== Instalando dependências ==="
-pipenv sync
+pipenv sync --python "$HOME/.pyenv/versions/$(cat .python-version)/bin/python"
 npm ci
 npx gulp build
 
@@ -31,6 +31,9 @@ pipenv run python manage.py compilemessages
 
 echo "=== Coletando arquivos estáticos ==="
 pipenv run python manage.py collectstatic --noinput
+
+echo "=== Limpando node_modules (não é usado em runtime) ==="
+rm -rf node_modules
 
 echo "=== Voltando ao diretório anterior ==="
 cd ..
