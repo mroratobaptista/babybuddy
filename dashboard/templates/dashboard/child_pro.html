@@ -35,16 +35,31 @@
         .pro-range { font-size: .72rem; opacity: .7; align-self: center; }
         .pro-chart { display: flex; align-items: flex-end; gap: 4px; height: 84px; margin: .25rem 0; }
         .pro-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
-        .pro-cnum { font-size: .58rem; font-weight: 700; line-height: 1; margin-bottom: 2px; }
-        .pro-bar { width: 100%; min-height: 3px; border-radius: 3px 3px 0 0; background: currentColor; opacity: .5; }
+        .pro-cnum { font-size: .82rem; font-weight: 700; line-height: 1; margin-bottom: 3px; color: var(--bs-body-color); }
+        .pro-bar { width: 100%; min-height: 3px; border-radius: 3px 3px 0 0; background: currentColor; opacity: .55; }
         .pro-bar-today { opacity: 1; }
-        .pro-bar-stack { width: 100%; min-height: 3px; border-radius: 3px 3px 0 0; overflow: hidden; display: flex; flex-direction: column-reverse; opacity: .85; }
-        .pro-bar-stack.today { opacity: 1; }
         .pro-seg-wet { background: var(--bs-warning); }
         .pro-seg-solid { background: #7a5230; }
         .pro-seg-dry { background: var(--bs-gray-500); }
         .pro-bars-x { display: flex; gap: 4px; }
-        .pro-bars-x span { flex: 1; text-align: center; font-size: .6rem; opacity: .6; }
+        .pro-bars-x span { flex: 1; text-align: center; font-size: .6rem; }
+        /* horizontal diaper bars (like the classic dashboard) */
+        .pro-hbars { display: flex; flex-direction: column; gap: 5px; margin: .25rem 0; }
+        .pro-hbar-row { display: flex; align-items: center; gap: 8px; }
+        .pro-hbar-day { flex: 0 0 34px; font-size: .7rem; text-align: right; color: var(--bs-secondary-color); }
+        .pro-hbar { flex: 1; height: 20px; background: var(--bs-border-color); border-radius: 4px; overflow: hidden; display: flex; }
+        .pro-hbar .progress-bar { font-size: .78rem; font-weight: 700; min-width: 0; }
+        .pro-hbar .pro-seg-wet { color: #3a2b00; }
+        .pro-hbar .pro-seg-solid { color: #fff; }
+        .pro-hbar .pro-seg-dry { color: #212529; }
+        .pro-hbar-total { flex: 0 0 auto; min-width: 20px; text-align: left; font-size: .9rem; font-weight: 700; color: var(--bs-body-color); }
+        /* keep small helper texts readable (override the card's category tint) */
+        #dashboard-child-pro .pro-legend,
+        #dashboard-child-pro .pro-note-hint,
+        #dashboard-child-pro .pro-anchor,
+        #dashboard-child-pro .avg-note,
+        #dashboard-child-pro .pro-bars-x span,
+        #dashboard-child-pro .card-body .small { color: var(--bs-secondary-color); }
         .pro-split { display: flex; gap: .4rem; }
         .pro-split > div { flex: 1; text-align: center; border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .4rem; }
         .pro-split .n { font-size: 1.1rem; font-weight: 700; }
@@ -72,7 +87,7 @@
         .pro-ghost-row .icon-2x { opacity: .7; }
         .pro-ghost-row .btn { margin-left: auto; }
         .pro-progress-seg { display: flex; height: 14px; border-radius: 20px; overflow: hidden; background: var(--bs-border-color); margin: .4rem 0; }
-        .pro-legend { display: flex; flex-wrap: wrap; gap: .75rem; font-size: .72rem; opacity: .8; }
+        .pro-legend { display: flex; flex-wrap: wrap; gap: .75rem; font-size: .72rem; }
         .pro-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
     </style>
     {% with w=pro.window %}
@@ -372,37 +387,34 @@
                     <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Types (period)" %}</div>
                     <div class="card-body">
                         <div class="pro-progress-seg">
-                            <div style="width: {{ pro.diaper.wet_pct }}%;
-                                        background: var(--bs-danger)"></div>
-                            <div style="width: {{ pro.diaper.solid_pct }}%; background: #6b4226;"></div>
-                            <div style="width: {{ pro.diaper.empty_pct }}%;
-                                        background: var(--bs-gray-600)"></div>
+                            <div class="pro-seg-wet" style="width: {{ pro.diaper.wet_pct }}%"></div>
+                            <div class="pro-seg-solid" style="width: {{ pro.diaper.solid_pct }}%"></div>
+                            <div class="pro-seg-dry" style="width: {{ pro.diaper.empty_pct }}%"></div>
                         </div>
                         <div class="pro-legend">
-                            <span><i style="background: var(--bs-danger);"></i>{% trans "Wet" %} {{ pro.diaper.wet_pct }}%</span>
-                            <span><i style="background: #6b4226;"></i>{% trans "Solid" %} {{ pro.diaper.solid_pct }}%</span>
-                            <span><i style="background: var(--bs-gray-600);"></i>{% trans "Dry" %} {{ pro.diaper.empty_pct }}%</span>
+                            <span><i class="pro-seg-wet"></i>{% trans "Wet" %} {{ pro.diaper.wet_pct }}%</span>
+                            <span><i class="pro-seg-solid"></i>{% trans "Solid" %} {{ pro.diaper.solid_pct }}%</span>
+                            <span><i class="pro-seg-dry"></i>{% trans "Dry" %} {{ pro.diaper.empty_pct }}%</span>
                         </div>
                     </div>
                 </div>
                 <div class="card card-dashboard card-diaperchange">
                     <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Last 7 days" %}</div>
                     <div class="card-body">
-                        <div class="pro-chart">
+                        <div class="pro-hbars">
                             {% for d in pro.diaper.trend %}
-                                <div class="pro-col">
-                                    <div class="pro-cnum">{{ d.changes }}</div>
-                                    <div class="pro-bar-stack {% if d.today %}today{% endif %}"
-                                         style="height: calc(64px * {{ d.pct }} / 100)"
+                                <div class="pro-hbar-row">
+                                    <span class="pro-hbar-day">{{ d.date|date:'D' }}</span>
+                                    <div class="pro-hbar"
                                          title="{{ d.wet }} {% trans 'Wet' %} / {{ d.solid }} {% trans 'Solid' %} / {{ d.dry }} {% trans 'Dry' %}">
-                                        {% if d.wet %}<div class="pro-seg-wet" style="flex: {{ d.wet }}"></div>{% endif %}
-                                        {% if d.solid %}<div class="pro-seg-solid" style="flex: {{ d.solid }}"></div>{% endif %}
-                                        {% if d.dry %}<div class="pro-seg-dry" style="flex: {{ d.dry }}"></div>{% endif %}
+                                        {% if d.wet %}<div class="progress-bar pro-seg-wet" style="flex: {{ d.wet }}">{{ d.wet }}</div>{% endif %}
+                                        {% if d.solid %}<div class="progress-bar pro-seg-solid" style="flex: {{ d.solid }}">{{ d.solid }}</div>{% endif %}
+                                        {% if d.dry %}<div class="progress-bar pro-seg-dry" style="flex: {{ d.dry }}">{{ d.dry }}</div>{% endif %}
                                     </div>
+                                    <span class="pro-hbar-total">{{ d.changes }}</span>
                                 </div>
                             {% endfor %}
                         </div>
-                        <div class="pro-bars-x">{% for d in pro.diaper.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
                         <div class="pro-legend mt-2">
                             <span><i class="pro-seg-wet"></i>{% trans "Wet" %}</span>
                             <span><i class="pro-seg-solid"></i>{% trans "Solid" %}</span>
