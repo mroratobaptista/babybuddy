@@ -7,6 +7,8 @@ from django.views.generic.detail import DetailView
 from babybuddy.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from core.models import Child
 
+from . import dashboard_pro
+
 
 class Dashboard(LoginRequiredMixin, TemplateView):
     # TODO: Use .card-deck in this template once BS4 is finalized.
@@ -35,3 +37,23 @@ class ChildDashboard(PermissionRequiredMixin, DetailView):
     model = Child
     permission_required = ("core.view_child",)
     template_name = "dashboard/child.html"
+
+
+class ChildDashboardPro(PermissionRequiredMixin, DetailView):
+    """
+    A separate, category-grouped dashboard with a global period filter and
+    next-event predictions. Does not replace the classic ChildDashboard.
+    """
+
+    model = Child
+    permission_required = ("core.view_child",)
+    template_name = "dashboard/child_pro.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["pro"] = dashboard_pro.build_context(
+            self.object,
+            self.request.GET.get("period", "day"),
+            self.request.GET.get("date"),
+        )
+        return context

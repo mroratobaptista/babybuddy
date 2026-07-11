@@ -11,6 +11,12 @@
     <li class="breadcrumb-item active" aria-current="page">{% trans "Dashboard" %}</li>
 {% endblock %}
 {% block content %}
+    <div class="mb-3">
+        <a class="btn btn-sm btn-primary"
+           href="{% url 'dashboard:dashboard-child-pro' object.slug %}">
+            <i class="icon-graph" aria-hidden="true"></i> {% trans "Dashboard Pro" %}
+        </a>
+    </div>
     <div id="dashboard-child"
          class="row"
          data-masonry='{"percentPosition": true }'>

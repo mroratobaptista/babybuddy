@@ -1,0 +1,529 @@
+{% extends 'babybuddy/page.html' %}
+{% load duration i18n %}
+{% block title %}
+    {% trans "Dashboard Pro" %} - {{ object }}
+{% endblock %}
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:dashboard-child' object.slug %}">{{ object }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Dashboard Pro" %}</li>
+{% endblock %}
+{% block content %}
+    <style>
+        .pro-toolbar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-bottom: 1rem; }
+        .pro-toolbar .pro-label { text-transform: uppercase; letter-spacing: .06em; font-size: .72rem; font-weight: 700; opacity: .7; }
+        .pro-toolbar .ms-auto-nav { margin-left: auto; }
+        .pro-col-title { display: flex; align-items: center; gap: .5rem; text-transform: uppercase; letter-spacing: .05em;
+            font-size: .8rem; font-weight: 700; opacity: .75; padding-bottom: .4rem; margin-bottom: .75rem; border-bottom: 2px solid var(--bs-border-color); }
+        .pro-col-title .today { margin-left: auto; text-transform: none; letter-spacing: 0; opacity: 1; font-weight: 600; }
+        .pro-col-feeding .pro-col-title { border-color: var(--bs-primary); }
+        .pro-col-diaper .pro-col-title { border-color: var(--bs-danger); }
+        .pro-col-sleep .pro-col-title { border-color: var(--bs-secondary); }
+        .pro-eta { font-size: 2rem; font-weight: 700; line-height: 1; }
+        .pro-anchor { font-size: .8rem; opacity: .8; margin: .4rem 0 .6rem; }
+        .pro-avgs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+        .pro-avg { text-align: center; padding: .4rem .2rem; border: 1px solid var(--bs-border-color); border-radius: .375rem; }
+        .pro-avg .win { font-size: .62rem; text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
+        .pro-avg .val { font-size: .8rem; font-weight: 700; }
+        .pro-avg.used { border-width: 2px; border-color: currentColor; }
+        .pro-note-hint { font-size: .68rem; opacity: .65; margin-top: .5rem; }
+        .pro-bars { display: flex; align-items: flex-end; gap: 4px; height: 58px; margin: .25rem 0; }
+        .pro-bar { flex: 1; min-height: 3px; border-radius: 3px 3px 0 0; background: currentColor; opacity: .45; }
+        .pro-bar-today { opacity: 1; }
+        .pro-bars-x { display: flex; gap: 4px; }
+        .pro-bars-x span { flex: 1; text-align: center; font-size: .6rem; opacity: .6; }
+        .pro-split { display: flex; gap: .4rem; }
+        .pro-split > div { flex: 1; text-align: center; border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .4rem; }
+        .pro-split .n { font-size: 1.1rem; font-weight: 700; }
+        .pro-split .l { font-size: .68rem; opacity: .75; }
+        .pro-timer-elapsed { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+        .pro-run-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--bs-success); margin-right: 6px;
+            animation: pro-pulse 1.6s ease-out infinite; }
+        @keyframes pro-pulse { 0% { box-shadow: 0 0 0 0 rgba(35,149,86,.6); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+        @media (prefers-reduced-motion: reduce) { .pro-run-dot { animation: none; } }
+        .pro-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .6rem; }
+        .pro-tile { border: 1px solid var(--bs-border-color); border-left-width: 3px; border-radius: .375rem; padding: .5rem .6rem; }
+        .pro-tile .l { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
+        .pro-tile .e { font-size: 1.15rem; font-weight: 700; }
+        .pro-tile .r { font-size: .72rem; opacity: .8; }
+        .pro-tile.t-feeding { border-left-color: var(--bs-primary); }
+        .pro-tile.t-diaper, .pro-tile.t-medication { border-left-color: var(--bs-danger); }
+        .pro-tile.t-sleep { border-left-color: var(--bs-secondary); }
+        .pro-nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: .6rem; }
+        .pro-num { border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .45rem .6rem; }
+        .pro-num .n { font-size: 1.15rem; font-weight: 700; }
+        .pro-num .l { font-size: .68rem; opacity: .75; }
+        .pro-ghost-row { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border: 1px solid var(--bs-border-color);
+            border-radius: .375rem; margin-bottom: .5rem; }
+        .pro-ghost-row:last-child { margin-bottom: 0; }
+        .pro-ghost-row .icon-2x { opacity: .7; }
+        .pro-ghost-row .btn { margin-left: auto; }
+        .pro-progress-seg { display: flex; height: 14px; border-radius: 20px; overflow: hidden; background: var(--bs-border-color); margin: .4rem 0; }
+        .pro-legend { display: flex; flex-wrap: wrap; gap: .75rem; font-size: .72rem; opacity: .8; }
+        .pro-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+    </style>
+    {% with w=pro.window %}
+        <div id="dashboard-child-pro">
+            {# ---- Toolbar: switch back to classic + global period filter ---- #}
+            <div class="pro-toolbar">
+                <a class="btn btn-sm btn-outline-secondary"
+                   href="{% url 'dashboard:dashboard-child' object.slug %}">
+                    <i class="icon-dashboard" aria-hidden="true"></i> {% trans "Classic dashboard" %}
+                </a>
+                <span class="pro-label ms-2">{% trans "Period" %}</span>
+                <div class="btn-group btn-group-sm"
+                     role="group"
+                     aria-label="{% trans 'Period' %}">
+                    <a class="btn btn-outline-primary {% if w.period == 'day' %}active{% endif %}"
+                       href="?period=day&date={{ w.anchor|date:'Y-m-d' }}">{% trans "Today" %}</a>
+                    <a class="btn btn-outline-primary {% if w.period == 'week' %}active{% endif %}"
+                       href="?period=week&date={{ w.anchor|date:'Y-m-d' }}">{% trans "Week" %}</a>
+                    <a class="btn btn-outline-primary {% if w.period == 'month' %}active{% endif %}"
+                       href="?period=month&date={{ w.anchor|date:'Y-m-d' }}">{% trans "Month" %}</a>
+                    <a class="btn btn-outline-primary {% if w.period == 'all' %}active{% endif %}"
+                       href="?period=all">{% trans "All" %}</a>
+                </div>
+                {% if w.period != 'all' %}
+                    <div class="btn-group btn-group-sm ms-auto-nav" role="group">
+                        <a class="btn btn-outline-secondary"
+                           href="?period={{ w.period }}&date={{ w.prev_date }}"
+                           aria-label="{% trans 'Previous' %}"><i class="icon-angle-left" aria-hidden="true"></i></a>
+                        <span class="btn btn-outline-secondary disabled">
+                            {% if w.period == 'day' %}{{ w.anchor|date:'D, d M Y' }}
+                            {% else %}{{ w.start_date|date:'d M' }} – {{ w.end_date|date:'d M Y' }}{% endif %}
+                        </span>
+                        {% if w.can_go_next %}
+                            <a class="btn btn-outline-secondary"
+                               href="?period={{ w.period }}&date={{ w.next_date }}"
+                               aria-label="{% trans 'Next' %}"><i class="icon-angle-right" aria-hidden="true"></i></a>
+                        {% else %}
+                            <span class="btn btn-outline-secondary disabled"><i class="icon-angle-right" aria-hidden="true"></i></span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+            {# ---- Active timers (top, live elapsed) ---- #}
+            {% if pro.timers %}
+                <div class="card card-dashboard card-timer">
+                    <div class="card-header">
+                        <i class="icon-timer pull-left" aria-hidden="true"></i>
+                        {% trans "Active timers" %} <span class="badge bg-success ms-1">{{ pro.timers|length }}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for timer in pro.timers %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-center border rounded p-2">
+                                        <div>
+                                            <div class="text-uppercase small opacity-75">{{ timer.name|default:_("Timer") }}</div>
+                                            <div class="pro-timer-elapsed">
+                                                <span class="pro-run-dot"></span>{{ timer.duration|duration_string:'s' }}
+                                            </div>
+                                            <div class="small opacity-75">
+                                                {% blocktrans trimmed with start=timer.start|time user=timer.user %}
+                                                    started {{ start }} · by {{ user }}
+                                                {% endblocktrans %}
+                                            </div>
+                                        </div>
+                                        <a class="btn btn-sm btn-danger ms-auto"
+                                           href="{% url 'core:timer-detail' timer.id %}">{% trans "Stop" %}</a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            {# ---- Summary: predictions (live) + period totals ---- #}
+            <div class="card card-dashboard card-statistics">
+                <div class="card-header">
+                    <i class="icon-graph pull-left" aria-hidden="true"></i>
+                    {% trans "Period summary" %}
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if w.is_live %}
+                            <div class="col-lg-7 mb-3 mb-lg-0">
+                                <div class="pro-label mb-2">{% trans "What should happen · next events" %}</div>
+                                <div class="pro-tiles">
+                                    {% if pro.predictions.feeding %}
+                                        <div class="pro-tile t-feeding">
+                                            <div class="l"><i class="icon-feeding" aria-hidden="true"></i> {% trans "Feeding" %}</div>
+                                            <div class="e">{{ pro.predictions.feeding.predicted|time }}</div>
+                                            <div class="r">{% if pro.predictions.feeding.is_late %}<span class="badge bg-danger">{% blocktrans with t=pro.predictions.feeding.eta|duration_string:'m' %}{{ t }} late{% endblocktrans %}</span>{% else %}{% blocktrans with t=pro.predictions.feeding.eta|duration_string:'m' %}in {{ t }}{% endblocktrans %}{% endif %}</div>
+                                        </div>
+                                    {% endif %}
+                                    {% if pro.predictions.diaper %}
+                                        <div class="pro-tile t-diaper">
+                                            <div class="l"><i class="icon-diaperchange" aria-hidden="true"></i> {% trans "Change" %}</div>
+                                            <div class="e">{{ pro.predictions.diaper.predicted|time }}</div>
+                                            <div class="r">{% if pro.predictions.diaper.is_late %}<span class="badge bg-danger">{% blocktrans with t=pro.predictions.diaper.eta|duration_string:'m' %}{{ t }} late{% endblocktrans %}</span>{% else %}{% blocktrans with t=pro.predictions.diaper.eta|duration_string:'m' %}in {{ t }}{% endblocktrans %}{% endif %}</div>
+                                        </div>
+                                    {% endif %}
+                                    {% if pro.predictions.nap %}
+                                        <div class="pro-tile t-sleep">
+                                            <div class="l"><i class="icon-sleep" aria-hidden="true"></i> {% trans "Nap" %}</div>
+                                            <div class="e">{{ pro.predictions.nap.predicted|time }}</div>
+                                            <div class="r">{% if pro.predictions.nap.is_late %}<span class="badge bg-danger">{% blocktrans with t=pro.predictions.nap.eta|duration_string:'m' %}{{ t }} late{% endblocktrans %}</span>{% else %}{% blocktrans with t=pro.predictions.nap.eta|duration_string:'m' %}in {{ t }}{% endblocktrans %}{% endif %}</div>
+                                        </div>
+                                    {% endif %}
+                                    {% if pro.predictions.medication %}
+                                        <div class="pro-tile t-medication">
+                                            <div class="l"><i class="icon-medication" aria-hidden="true"></i> {% trans "Dose" %}</div>
+                                            <div class="e">{{ pro.predictions.medication.next_dose_time|time }}</div>
+                                            <div class="r">{% if pro.predictions.medication.next_dose_ready %}<span class="badge bg-success">{% trans "ready" %}</span>{% else %}{{ pro.predictions.medication.next_dose_time|date:'d/m' }}{% endif %}</div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                        <div class="{% if w.is_live %}col-lg-5{% else %}col-12{% endif %}">
+                            <div class="pro-label mb-2">{% trans "What happened · totals" %}</div>
+                            <div class="pro-nums">
+                                {% if pro.feeding %}<div class="pro-num"><div class="n">{{ pro.feeding.count }}</div><div class="l">{% trans "Feedings" %}{% if pro.feeding.amount %} · {{ pro.feeding.amount }} ml{% endif %}</div></div>{% endif %}
+                                {% if pro.diaper %}<div class="pro-num"><div class="n">{{ pro.diaper.count }}</div><div class="l">{% trans "Changes" %} · {{ pro.diaper.wet }}/{{ pro.diaper.solid }}</div></div>{% endif %}
+                                {% if pro.sleep %}<div class="pro-num"><div class="n">{{ pro.sleep.total|duration_string:'m' }}</div><div class="l">{% trans "Sleep" %} · {{ pro.sleep.count }}</div></div>{% endif %}
+                                {% if pro.tummytime %}<div class="pro-num"><div class="n">{{ pro.tummytime.total|duration_string:'m' }}</div><div class="l">{% trans "Tummy time" %} · {{ pro.tummytime.count }}</div></div>{% endif %}
+                                {% if pro.pumping %}<div class="pro-num"><div class="n">{{ pro.pumping.amount }} ml</div><div class="l">{% trans "Pumping" %} · {{ pro.pumping.count }}</div></div>{% endif %}
+                                {% if pro.medication %}<div class="pro-num"><div class="n">{{ pro.medication.count }}</div><div class="l">{% trans "Doses" %}</div></div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {# ===================== 3 COLUMNS ===================== #}
+            <div class="row">
+                {# ---------- FEEDING ---------- #}
+                {% if pro.feeding %}
+                    <div class="col-lg-4 pro-col-feeding">
+                        <div class="pro-col-title">
+                            <i class="icon-feeding" aria-hidden="true"></i> {% trans "Feeding" %}
+                            <span class="today">{{ pro.feeding.count }}{% if pro.feeding.amount %} · {{ pro.feeding.amount }} ml{% endif %}</span>
+                        </div>
+                        {% if pro.feeding.prediction %}
+                            <div class="card card-dashboard card-feeding">
+                                <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Next feeding" %}</div>
+                                <div class="card-body">
+                                    <div class="pro-eta">
+                                        {{ pro.feeding.prediction.predicted|time }}
+                                        {% if pro.feeding.prediction.is_late %}<span class="badge bg-danger align-middle">{% blocktrans with t=pro.feeding.prediction.eta|duration_string:'m' %}{{ t }} late{% endblocktrans %}</span>
+                                        {% else %}<span class="badge bg-success align-middle">{% blocktrans with t=pro.feeding.prediction.eta|duration_string:'m' %}in {{ t }}{% endblocktrans %}</span>{% endif %}
+                                </div>
+                                <div class="pro-anchor">{% blocktrans with time=pro.feeding.last_base|time %}Last at {{ time }}{% endblocktrans %}</div>
+                                <div class="pro-avgs">
+                                    <div class="pro-avg {% if pro.feeding.prediction.used == 'day' %}used{% endif %}"><div class="win">{% trans "Day" %}</div><div class="val">{% if pro.feeding.prediction.averages.day %}{{ pro.feeding.prediction.averages.day|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                                    <div class="pro-avg {% if pro.feeding.prediction.used == 'week' %}used{% endif %}"><div class="win">{% trans "Week" %}</div><div class="val">{% if pro.feeding.prediction.averages.week %}{{ pro.feeding.prediction.averages.week|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                                    <div class="pro-avg {% if pro.feeding.prediction.used == 'all' %}used{% endif %}"><div class="win">{% trans "All" %}</div><div class="val">{% if pro.feeding.prediction.averages.all %}{{ pro.feeding.prediction.averages.all|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                                </div>
+                                <div class="pro-note-hint">{% trans "Average interval between feedings · the day window drives the estimate." %}</div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <div class="card card-dashboard card-feeding">
+                        <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Last feeding" %}</div>
+                        <div class="card-body">
+                            <span class="card-title"><strong>{{ pro.feeding.last_base|deltasince|duration_string:'m' }} {% trans "ago" %}</strong></span>
+                            <div class="card-text">
+                                {{ pro.feeding.last.start|time }}{% if pro.feeding.last.end != pro.feeding.last.start %} – {{ pro.feeding.last.end|time }}{% endif %}<br>
+                                {{ pro.feeding.last.get_type_display }}, {{ pro.feeding.last.get_method_display }}{% if pro.feeding.last.amount %} ({{ pro.feeding.last.amount }} ml){% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card card-dashboard card-feeding">
+                        <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Last 7 days" %}</div>
+                        <div class="card-body">
+                            <div class="pro-bars">
+                                {% for d in pro.feeding.trend %}
+                                    <div class="pro-bar {% if d.today %}pro-bar-today{% endif %}"
+                                         style="height: {{ d.pct }}%"></div>
+                                {% endfor %}
+                            </div>
+                            <div class="pro-bars-x">{% for d in pro.feeding.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
+                        </div>
+                    </div>
+                    {% if pro.feeding.breast %}
+                        <div class="card card-dashboard card-feeding">
+                            <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Breast · left vs right" %}</div>
+                            <div class="card-body">
+                                <div class="pro-split">
+                                    <div><div class="n">{{ pro.feeding.breast.left_pct }}%</div><div class="l">{% trans "Left" %} · {{ pro.feeding.breast.left }}</div></div>
+                                    <div><div class="n">{{ pro.feeding.breast.right_pct }}%</div><div class="l">{% trans "Right" %} · {{ pro.feeding.breast.right }}</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if pro.pumping %}
+                        <div class="card card-dashboard card-pumping">
+                            <div class="card-header"><i class="icon-pumping pull-left" aria-hidden="true"></i> {% trans "Pumping" %}</div>
+                            <div class="card-body">
+                                <span class="card-title"><strong>{{ pro.pumping.last.start|deltasince|duration_string:'m' }} {% trans "ago" %}</strong></span>
+                                <div class="card-text">
+                                    {{ pro.pumping.last.start|time }}{% if pro.pumping.last.amount %} · {{ pro.pumping.last.amount }} ml{% endif %}<br>
+                                    {% blocktrans with count=pro.pumping.count amount=pro.pumping.amount %}{{ count }} in period · {{ amount }} ml{% endblocktrans %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+            {# ---------- DIAPER ---------- #}
+            {% if pro.diaper %}
+                <div class="col-lg-4 pro-col-diaper">
+                    <div class="pro-col-title">
+                        <i class="icon-diaperchange" aria-hidden="true"></i> {% trans "Diaper change" %}
+                        <span class="today">{{ pro.diaper.count }} · {{ pro.diaper.wet }}/{{ pro.diaper.solid }}</span>
+                    </div>
+                    {% if pro.diaper.prediction %}
+                        <div class="card card-dashboard card-diaperchange">
+                            <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Next change" %}</div>
+                            <div class="card-body">
+                                <div class="pro-eta">
+                                    {{ pro.diaper.prediction.predicted|time }}
+                                    {% if pro.diaper.prediction.is_late %}<span class="badge bg-danger align-middle">{% blocktrans with t=pro.diaper.prediction.eta|duration_string:'m' %}{{ t }} late{% endblocktrans %}</span>
+                                    {% else %}<span class="badge bg-success align-middle">{% blocktrans with t=pro.diaper.prediction.eta|duration_string:'m' %}in {{ t }}{% endblocktrans %}</span>{% endif %}
+                            </div>
+                            <div class="pro-anchor">{% blocktrans with time=pro.diaper.last.time|time %}Last at {{ time }}{% endblocktrans %}</div>
+                            <div class="pro-avgs">
+                                <div class="pro-avg {% if pro.diaper.prediction.used == 'day' %}used{% endif %}"><div class="win">{% trans "Day" %}</div><div class="val">{% if pro.diaper.prediction.averages.day %}{{ pro.diaper.prediction.averages.day|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                                <div class="pro-avg {% if pro.diaper.prediction.used == 'week' %}used{% endif %}"><div class="win">{% trans "Week" %}</div><div class="val">{% if pro.diaper.prediction.averages.week %}{{ pro.diaper.prediction.averages.week|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                                <div class="pro-avg {% if pro.diaper.prediction.used == 'all' %}used{% endif %}"><div class="win">{% trans "All" %}</div><div class="val">{% if pro.diaper.prediction.averages.all %}{{ pro.diaper.prediction.averages.all|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                            </div>
+                            <div class="pro-note-hint">{% trans "Past the estimate → the card turns into an alert." %}</div>
+                        </div>
+                    </div>
+                {% endif %}
+                <div class="card card-dashboard card-diaperchange">
+                    <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Last change" %}</div>
+                    <div class="card-body">
+                        <span class="card-title"><strong>{{ pro.diaper.last.time|deltasince|duration_string:'m' }} {% trans "ago" %}</strong></span>
+                        <div class="card-text">
+                            {{ pro.diaper.last.time|time }}
+                            <br>
+                            {% for attr in pro.diaper.last.attributes %}{{ attr }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card card-dashboard card-diaperchange">
+                    <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Types (period)" %}</div>
+                    <div class="card-body">
+                        <div class="pro-progress-seg">
+                            <div style="width: {{ pro.diaper.wet_pct }}%;
+                                        background: var(--bs-danger)"></div>
+                            <div style="width: {{ pro.diaper.solid_pct }}%; background: #6b4226;"></div>
+                            <div style="width: {{ pro.diaper.empty_pct }}%;
+                                        background: var(--bs-gray-600)"></div>
+                        </div>
+                        <div class="pro-legend">
+                            <span><i style="background: var(--bs-danger);"></i>{% trans "Wet" %} {{ pro.diaper.wet_pct }}%</span>
+                            <span><i style="background: #6b4226;"></i>{% trans "Solid" %} {{ pro.diaper.solid_pct }}%</span>
+                            <span><i style="background: var(--bs-gray-600);"></i>{% trans "Dry" %} {{ pro.diaper.empty_pct }}%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card card-dashboard card-diaperchange">
+                    <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Last 7 days" %}</div>
+                    <div class="card-body">
+                        <div class="pro-bars">
+                            {% for d in pro.diaper.trend %}
+                                <div class="pro-bar {% if d.today %}pro-bar-today{% endif %}"
+                                     style="height: {{ d.pct }}%"></div>
+                            {% endfor %}
+                        </div>
+                        <div class="pro-bars-x">{% for d in pro.diaper.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        {# ---------- SLEEP ---------- #}
+        {% if pro.sleep %}
+            <div class="col-lg-4 pro-col-sleep">
+                <div class="pro-col-title">
+                    <i class="icon-sleep" aria-hidden="true"></i> {% trans "Sleep" %}
+                    <span class="today">{{ pro.sleep.count }} · {{ pro.sleep.total|duration_string:'m' }}</span>
+                </div>
+                {% if pro.sleep.prediction %}
+                    <div class="card card-dashboard card-sleep">
+                        <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Next nap" %}</div>
+                        <div class="card-body">
+                            <div class="pro-eta">
+                                {{ pro.sleep.prediction.predicted|time }}
+                                {% if pro.sleep.prediction.is_late %}<span class="badge bg-danger align-middle">{% blocktrans with t=pro.sleep.prediction.eta|duration_string:'m' %}{{ t }} late{% endblocktrans %}</span>
+                                {% else %}<span class="badge bg-success align-middle">{% blocktrans with t=pro.sleep.prediction.eta|duration_string:'m' %}in {{ t }}{% endblocktrans %}</span>{% endif %}
+                        </div>
+                        <div class="pro-anchor">{% blocktrans with time=pro.sleep.last.end|time %}Woke at {{ time }}{% endblocktrans %}</div>
+                        <div class="pro-avgs">
+                            <div class="pro-avg {% if pro.sleep.prediction.used == 'day' %}used{% endif %}"><div class="win">{% trans "Day" %}</div><div class="val">{% if pro.sleep.prediction.averages.day %}{{ pro.sleep.prediction.averages.day|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                            <div class="pro-avg {% if pro.sleep.prediction.used == 'week' %}used{% endif %}"><div class="win">{% trans "Week" %}</div><div class="val">{% if pro.sleep.prediction.averages.week %}{{ pro.sleep.prediction.averages.week|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                            <div class="pro-avg {% if pro.sleep.prediction.used == 'all' %}used{% endif %}"><div class="win">{% trans "All" %}</div><div class="val">{% if pro.sleep.prediction.averages.all %}{{ pro.sleep.prediction.averages.all|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                        </div>
+                        <div class="pro-note-hint">{% trans "Average awake duration between sleeps." %}</div>
+                    </div>
+                </div>
+            {% endif %}
+            <div class="card card-dashboard card-sleep">
+                <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Last sleep" %}</div>
+                <div class="card-body">
+                    <span class="card-title"><strong>{{ pro.sleep.last.end|deltasince|duration_string:'m' }} {% trans "ago" %}</strong></span>
+                    <div class="card-text">
+                        {{ pro.sleep.last.start|time }} – {{ pro.sleep.last.end|time }} · {{ pro.sleep.last.duration|duration_string:'m' }}
+                    </div>
+                </div>
+            </div>
+            <div class="card card-dashboard card-sleep">
+                <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Last 7 days" %}</div>
+                <div class="card-body">
+                    <div class="pro-bars">
+                        {% for d in pro.sleep.trend %}
+                            <div class="pro-bar {% if d.today %}pro-bar-today{% endif %}"
+                                 style="height: {{ d.pct }}%"></div>
+                        {% endfor %}
+                    </div>
+                    <div class="pro-bars-x">{% for d in pro.sleep.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
+                </div>
+            </div>
+            {% if pro.sleep.naps_today %}
+                <div class="card card-dashboard card-sleep">
+                    <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Naps in period" %}</div>
+                    <ul class="list-group list-group-flush">
+                        {% for nap in pro.sleep.naps_today %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>{{ nap.start|time }} – {{ nap.end|time }}</span>
+                                <span>{{ nap.duration|duration_string:'m' }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{# ===================== HEALTH & ROUTINE ===================== #}
+{% if pro.medication or pro.growth or pro.notes or pro.tummytime or pro.temperature %}
+    <h5 class="text-uppercase opacity-75 mt-4 mb-3"
+        style="letter-spacing:.05em;
+               font-size:.9rem">{% trans "Health & routine" %}</h5>
+    <div class="row">
+        {% if pro.medication %}
+            <div class="col-lg-8">
+                <div class="card card-dashboard card-medication">
+                    <div class="card-header"><i class="icon-medication pull-left" aria-hidden="true"></i> {% trans "Medication" %}</div>
+                    <div class="card-body">
+                        {% if pro.medication.next_dose %}
+                            <div class="d-flex align-items-center border rounded p-2 mb-2">
+                                <div>
+                                    <div class="text-uppercase small opacity-75">{% trans "Next dose" %}</div>
+                                    <strong>{{ pro.medication.next_dose.name }}{% if pro.medication.next_dose.dosage %} · {{ pro.medication.next_dose.dosage }} {{ pro.medication.next_dose.get_dosage_unit_display }}{% endif %}</strong>
+                                </div>
+                                <div class="ms-auto text-end">
+                                    {% if pro.medication.next_dose.next_dose_ready %}
+                                        <span class="badge bg-success">{% trans "ready" %}</span>
+                                    {% endif %}
+                                    <div class="small opacity-75">{{ pro.medication.next_dose.next_dose_time|date:'d/m H:i' }}</div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        <ul class="list-group list-group-flush">
+                            {% for med in pro.medication.meds %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>{{ med.name }}{% if med.dosage %} · {{ med.dosage }} {{ med.get_dosage_unit_display }}{% endif %}</span>
+                                    <span class="opacity-75 small">{% blocktrans with time=med.time|date:'d/m H:i' %}last {{ time }}{% endblocktrans %}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        <div class="small opacity-75 mt-2">{% blocktrans with count=pro.medication.count %}{{ count }} doses in period{% endblocktrans %}</div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        {% if pro.growth %}
+            <div class="col-lg-4">
+                <div class="card card-dashboard card-statistics">
+                    <div class="card-header"><i class="icon-measurements pull-left" aria-hidden="true"></i> {% trans "Growth" %}</div>
+                    <div class="card-body">
+                        {% if pro.growth.weight %}<div class="d-flex justify-content-between"><span class="opacity-75">{% trans "Weight" %}</span><span>{{ pro.growth.weight.weight }} · {{ pro.growth.weight.date|date:'d/m' }}</span></div>{% endif %}
+                        {% if pro.growth.height %}<div class="d-flex justify-content-between"><span class="opacity-75">{% trans "Height" %}</span><span>{{ pro.growth.height.height }} · {{ pro.growth.height.date|date:'d/m' }}</span></div>{% endif %}
+                        {% if pro.growth.head %}<div class="d-flex justify-content-between"><span class="opacity-75">{% trans "Head circ." %}</span><span>{{ pro.growth.head.head_circumference }} · {{ pro.growth.head.date|date:'d/m' }}</span></div>{% endif %}
+                        {% if pro.growth.bmi %}<div class="d-flex justify-content-between"><span class="opacity-75">{% trans "BMI" %}</span><span>{{ pro.growth.bmi.bmi }} · {{ pro.growth.bmi.date|date:'d/m' }}</span></div>{% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        {% if pro.notes %}
+            <div class="col-lg-8">
+                <div class="card card-dashboard card-statistics">
+                    <div class="card-header"><i class="icon-note pull-left" aria-hidden="true"></i> {% trans "Latest notes" %}</div>
+                    <div class="card-body">
+                        {% for note in pro.notes %}
+                            <div class="border-start border-3 ps-2 mb-2">
+                                <div>{{ note.note|truncatechars:140 }}</div>
+                                <div class="small opacity-75">
+                                    {{ note.time|date:'d/m H:i' }}
+                                    {% for tag in note.tags.all %}<span class="badge bg-secondary">#{{ tag.name }}</span>{% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        {% if pro.tummytime %}
+            <div class="col-lg-4">
+                <div class="card card-dashboard card-tummytime">
+                    <div class="card-header"><i class="icon-tummytime pull-left" aria-hidden="true"></i> {% trans "Tummy time" %}</div>
+                    <div class="card-body">
+                        <span class="card-title"><strong>{{ pro.tummytime.last.end|deltasince|duration_string:'m' }} {% trans "ago" %}</strong></span>
+                        <div class="card-text">
+                            {% blocktrans with count=pro.tummytime.count total=pro.tummytime.total|duration_string:'m' %}{{ count }} in period · {{ total }}{% endblocktrans %}
+                            {% if pro.tummytime.milestone %}<br>{{ pro.tummytime.milestone }}{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        {% if pro.temperature %}
+            <div class="col-lg-4">
+                <div class="card card-dashboard card-statistics">
+                    <div class="card-header"><i class="icon-temperature pull-left" aria-hidden="true"></i> {% trans "Temperature" %}</div>
+                    <div class="card-body">
+                        <span class="card-title"><strong>{{ pro.temperature.last.temperature }}°</strong></span>
+                        <div class="card-text">{{ pro.temperature.last.time|date:'d/m H:i' }} · {% blocktrans with count=pro.temperature.count %}{{ count }} in period{% endblocktrans %}</div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endif %}
+{# ===================== NOT REGISTERED YET ===================== #}
+{% if pro.not_registered %}
+    <div class="card card-dashboard card-statistics mt-3">
+        <div class="card-header"><i class="icon-add pull-left" aria-hidden="true"></i> {% trans "Not tracked yet" %}</div>
+        <div class="card-body">
+            <p class="small opacity-75">{% trans "Cards only appear once there is data. Record the first entry and the card shows up automatically." %}</p>
+            {% for item in pro.not_registered %}
+                <div class="pro-ghost-row">
+                    <i class="{{ item.icon }} icon-2x" aria-hidden="true"></i>
+                    <span>{{ item.label }}</span>
+                    <a class="btn btn-sm btn-success" href="{% url item.url_name %}">
+                        <i class="icon-add" aria-hidden="true"></i> {% trans "Add" %}
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+</div>
+{% endwith %}
+{% endblock %}
+{% block javascript %}
+    {% if user.settings.dashboard_refresh_rate %}
+        <script type="application/javascript">
+            BabyBuddy.Dashboard.watch('dashboard-child-pro', {{ user.settings.dashboard_refresh_rate_milliseconds }});
+        </script>
+    {% else %}
+        <script type="application/javascript">BabyBuddy.Dashboard.watch('dashboard-child-pro', false);</script>
+    {% endif %}
+{% endblock %}
