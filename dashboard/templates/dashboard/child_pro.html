@@ -348,6 +348,17 @@
                             </div>
                         </div>
                     {% endif %}
+                    {% if pro.feeding.averages %}
+                        <div class="card card-dashboard card-feeding">
+                            <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Averages" %}</div>
+                            <div class="card-body">
+                                {% if pro.feeding.averages.interval %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average interval" %}</span><span>{{ pro.feeding.averages.interval|duration_string:'m' }}</span></div>{% endif %}
+                                {% if pro.feeding.averages.duration %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average duration" %}</span><span>{{ pro.feeding.averages.duration|duration_string:'m' }}</span></div>{% endif %}
+                                {% if pro.feeding.averages.amount %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average amount" %}</span><span>{{ pro.feeding.averages.amount|floatformat }} ml</span></div>{% endif %}
+                                {% if pro.feeding.averages.per_day %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Feedings per day" %}</span><span>{{ pro.feeding.averages.per_day|floatformat }}</span></div>{% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
                     {% if pro.pumping %}
                         <div class="card card-dashboard card-pumping">
                             <div class="card-header">
@@ -459,6 +470,15 @@
                         </div>
                     </div>
                 </div>
+                {% if pro.diaper.averages %}
+                    <div class="card card-dashboard card-diaperchange">
+                        <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Averages" %}</div>
+                        <div class="card-body">
+                            {% if pro.diaper.averages.interval %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average interval" %}</span><span>{{ pro.diaper.averages.interval|duration_string:'m' }}</span></div>{% endif %}
+                            {% if pro.diaper.averages.per_day %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Changes per day" %}</span><span>{{ pro.diaper.averages.per_day|floatformat }}</span></div>{% endif %}
+                        </div>
+                    </div>
+                {% endif %}
             </div>
         {% endif %}
         {# ---------- SLEEP ---------- #}

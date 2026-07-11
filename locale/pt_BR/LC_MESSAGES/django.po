@@ -2887,6 +2887,18 @@ msgstr "Próximo sono"
 msgid "nap"
 msgstr "soneca"
 
+msgid "Average interval"
+msgstr "Intervalo médio"
+
+msgid "Average amount"
+msgstr "Quantidade média"
+
+msgid "Feedings per day"
+msgstr "Alimentações por dia"
+
+msgid "Changes per day"
+msgstr "Trocas por dia"
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"

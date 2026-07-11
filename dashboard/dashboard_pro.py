@@ -12,6 +12,8 @@ stays logic-free and this can be unit-tested in isolation.
 
 from datetime import datetime, time as dtime, timedelta
 
+from django.db.models import Avg, Count
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -372,6 +374,47 @@ def _diaper_series(changes, end_date, days=7):
 
 
 # ---------------------------------------------------------------------------
+# All-time averages ("Averages" cards)
+# ---------------------------------------------------------------------------
+def _per_day_average(qs, field):
+    result = (
+        qs.annotate(_d=TruncDate(field))
+        .values("_d")
+        .annotate(_c=Count("id"))
+        .order_by()
+        .aggregate(avg=Avg("_c"))
+    )
+    return result["avg"]
+
+
+def _feeding_averages(child):
+    qs = models.Feeding.objects.filter(child=child)
+    if not qs.exists():
+        return None
+    agg = qs.aggregate(duration=Avg("duration"), amount=Avg("amount"))
+    freq = _cards._feeding_statistics(child)
+    interval = freq[-1]["btwn_average"] if freq else None
+    return {
+        "interval": interval or None,
+        "duration": agg["duration"],
+        "amount": agg["amount"],
+        "per_day": _per_day_average(qs, "start"),
+    }
+
+
+def _diaper_averages(child):
+    qs = models.DiaperChange.objects.filter(child=child)
+    if not qs.exists():
+        return None
+    freq = _cards._diaperchange_statistics(child)
+    interval = freq[-1]["btwn_average"] if freq else None
+    return {
+        "interval": interval or None,
+        "per_day": _per_day_average(qs, "time"),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Sections
 # ---------------------------------------------------------------------------
 def _feeding_section(child, window, now, prediction):
@@ -428,6 +471,7 @@ def _feeding_section(child, window, now, prediction):
         ),
         # Most recent feeding methods (newest first).
         "recent_methods": list(qs.order_by("-start")[:3]),
+        "averages": _feeding_averages(child),
     }
 
 
@@ -460,6 +504,7 @@ def _diaper_section(child, window, now, prediction):
         "solid_pct": round(100 * solid / total) if total else 0,
         "empty_pct": round(100 * empty / total) if total else 0,
         "trend": _diaper_series(trend_changes, window["end_date"]),
+        "averages": _diaper_averages(child),
     }
 
 
