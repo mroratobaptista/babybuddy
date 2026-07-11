@@ -34,15 +34,15 @@ PERIODS = (
 # Averaging windows shown on the prediction cards. The predicted time itself is
 # driven by the first stable window that has data (_PRED_DRIVER); "today" and
 # "yesterday" are comparison-only (too sparse to drive a reliable estimate).
-_PRED_WINDOWS = ("today", "yesterday", "3days", "7days", "14days", "month")
-_PRED_DRIVER = ("3days", "7days", "14days", "month")
+_PRED_WINDOWS = ("today", "yesterday", "3days", "7days", "14days", "30days")
+_PRED_DRIVER = ("3days", "7days", "14days", "30days")
 _PRED_LABELS = {
     "today": _("Today"),
     "yesterday": _("Yesterday"),
     "3days": _("3 days"),
     "7days": _("7 days"),
     "14days": _("14 days"),
-    "month": _("Month"),
+    "30days": _("30 days"),
 }
 
 
@@ -136,7 +136,7 @@ def _pred_ranges(now):
         "3days": (today0 - timedelta(days=2), None),
         "7days": (today0 - timedelta(days=6), None),
         "14days": (today0 - timedelta(days=13), None),
-        "month": (today0 - timedelta(days=29), None),
+        "30days": (today0 - timedelta(days=29), None),
     }
 
 

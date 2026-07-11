@@ -2863,6 +2863,9 @@ msgstr "Estimativa baseada na média de %(win)s."
 msgid "Past the estimate → alert."
 msgstr "Passou da estimativa → alerta."
 
+msgid "30 days"
+msgstr "30 dias"
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"
