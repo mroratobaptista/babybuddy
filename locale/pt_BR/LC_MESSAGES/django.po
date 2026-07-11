@@ -2854,6 +2854,15 @@ msgstr ""
 "Intervalo médio entre alimentações · a janela mais recente orienta a "
 "estimativa."
 
+msgid "14 days"
+msgstr "14 dias"
+
+msgid "Estimate based on the %(win)s average."
+msgstr "Estimativa baseada na média de %(win)s."
+
+msgid "Past the estimate → alert."
+msgstr "Passou da estimativa → alerta."
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"

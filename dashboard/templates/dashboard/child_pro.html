@@ -25,7 +25,7 @@
         .pro-col-sleep .pro-col-title { border-color: var(--bs-secondary); }
         .pro-eta { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--bs-body-color); }
         .pro-anchor { font-size: .8rem; margin: .4rem 0 .6rem; color: var(--bs-secondary-color); }
-        .pro-avgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; }
+        .pro-avgs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
         .pro-avg { text-align: center; padding: .4rem .2rem; border: 1px solid var(--bs-border-color); border-radius: .375rem; background: var(--bs-body-bg); color: var(--bs-body-color); }
         .pro-avg .win { font-size: .6rem; text-transform: uppercase; letter-spacing: .03em; color: var(--bs-secondary-color); }
         .pro-avg .val { font-size: .82rem; font-weight: 700; }
@@ -246,7 +246,9 @@
                                         </div>
                                     {% endfor %}
                                 </div>
-                                <div class="pro-note-hint">{% trans "Average interval between feedings · the most recent window drives the estimate." %}</div>
+                                <div class="pro-note-hint">
+                                    {% blocktrans with win=pro.feeding.prediction.used_label %}Estimate based on the {{ win }} average.{% endblocktrans %}
+                                </div>
                             </div>
                         </div>
                     {% endif %}
@@ -375,7 +377,10 @@
                                     </div>
                                 {% endfor %}
                             </div>
-                            <div class="pro-note-hint">{% trans "Past the estimate → the card turns into an alert." %}</div>
+                            <div class="pro-note-hint">
+                                {% blocktrans with win=pro.diaper.prediction.used_label %}Estimate based on the {{ win }} average.{% endblocktrans %}
+                                {% trans "Past the estimate → alert." %}
+                            </div>
                         </div>
                     </div>
                 {% endif %}
@@ -458,7 +463,9 @@
                                 </div>
                             {% endfor %}
                         </div>
-                        <div class="pro-note-hint">{% trans "Average awake duration between sleeps." %}</div>
+                        <div class="pro-note-hint">
+                            {% blocktrans with win=pro.sleep.prediction.used_label %}Estimate based on the {{ win }} average.{% endblocktrans %}
+                        </div>
                     </div>
                 </div>
             {% endif %}
