@@ -2866,6 +2866,12 @@ msgstr "Passou da estimativa → alerta."
 msgid "30 days"
 msgstr "30 dias"
 
+msgid "All feedings (bottle, breast, etc.)"
+msgstr "Todas as alimentações (mamadeira, seio, etc.)"
+
+msgid "Breast only; both breasts counts on each side."
+msgstr "Só no seio; ambos os seios conta em cada lado."
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"

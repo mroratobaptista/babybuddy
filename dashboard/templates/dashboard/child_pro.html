@@ -268,6 +268,21 @@
                             </div>
                         </div>
                     </div>
+                    {% if pro.feeding.recent_methods %}
+                        <div class="card card-dashboard card-feeding">
+                            <div class="card-header">
+                                <i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Recent methods" %}
+                            </div>
+                            <ul class="list-group list-group-flush">
+                                {% for f in pro.feeding.recent_methods %}
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>{{ f.get_method_display }}</span>
+                                        <span class="opacity-75 small">{% if forloop.first %}{% trans "most recent" %}{% else %}{{ f.start|date:'d/m H:i' }}{% endif %}</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
                     <div class="card card-dashboard card-feeding">
                         <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Last 7 days" %}</div>
                         <div class="card-body">
@@ -281,6 +296,7 @@
                                 {% endfor %}
                             </div>
                             <div class="pro-bars-x">{% for d in pro.feeding.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
+                            <div class="small opacity-75 mt-1">{% trans "All feedings (bottle, breast, etc.)" %}</div>
                         </div>
                     </div>
                     {% if pro.feeding.amount_trend %}
@@ -301,21 +317,6 @@
                                 <div class="pro-bars-x">{% for d in pro.feeding.amount_trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
                                 <div class="small opacity-75 mt-1">{% trans "Total ml per day" %}</div>
                             </div>
-                        </div>
-                    {% endif %}
-                    {% if pro.feeding.recent_methods %}
-                        <div class="card card-dashboard card-feeding">
-                            <div class="card-header">
-                                <i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Recent methods" %}
-                            </div>
-                            <ul class="list-group list-group-flush">
-                                {% for f in pro.feeding.recent_methods %}
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span>{{ f.get_method_display }}</span>
-                                        <span class="opacity-75 small">{% if forloop.first %}{% trans "most recent" %}{% else %}{{ f.start|date:'d/m H:i' }}{% endif %}</span>
-                                    </li>
-                                {% endfor %}
-                            </ul>
                         </div>
                     {% endif %}
                     {% if pro.feeding.breast_trend %}
@@ -341,6 +342,7 @@
                                     <span><i class="pro-seg-left"></i>{% trans "Left" %}</span>
                                     <span><i class="pro-seg-right"></i>{% trans "Right" %}</span>
                                 </div>
+                                <div class="small opacity-75 mt-1">{% trans "Breast only; both breasts counts on each side." %}</div>
                             </div>
                         </div>
                     {% endif %}
@@ -417,21 +419,6 @@
                     </div>
                 </div>
                 <div class="card card-dashboard card-diaperchange">
-                    <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Types (period)" %}</div>
-                    <div class="card-body">
-                        <div class="pro-progress-seg">
-                            <div class="pro-seg-wet" style="width: {{ pro.diaper.wet_pct }}%"></div>
-                            <div class="pro-seg-solid" style="width: {{ pro.diaper.solid_pct }}%"></div>
-                            <div class="pro-seg-dry" style="width: {{ pro.diaper.empty_pct }}%"></div>
-                        </div>
-                        <div class="pro-legend">
-                            <span><i class="pro-seg-wet"></i>{% trans "Wet" %} {{ pro.diaper.wet_pct }}%</span>
-                            <span><i class="pro-seg-solid"></i>{% trans "Solid" %} {{ pro.diaper.solid_pct }}%</span>
-                            <span><i class="pro-seg-dry"></i>{% trans "Dry" %} {{ pro.diaper.empty_pct }}%</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="card card-dashboard card-diaperchange">
                     <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Last 7 days" %}</div>
                     <div class="card-body">
                         <div class="pro-hbars">
@@ -452,6 +439,21 @@
                             <span><i class="pro-seg-wet"></i>{% trans "Wet" %}</span>
                             <span><i class="pro-seg-solid"></i>{% trans "Solid" %}</span>
                             <span><i class="pro-seg-dry"></i>{% trans "Dry" %}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card card-dashboard card-diaperchange">
+                    <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Types (period)" %}</div>
+                    <div class="card-body">
+                        <div class="pro-progress-seg">
+                            <div class="pro-seg-wet" style="width: {{ pro.diaper.wet_pct }}%"></div>
+                            <div class="pro-seg-solid" style="width: {{ pro.diaper.solid_pct }}%"></div>
+                            <div class="pro-seg-dry" style="width: {{ pro.diaper.empty_pct }}%"></div>
+                        </div>
+                        <div class="pro-legend">
+                            <span><i class="pro-seg-wet"></i>{% trans "Wet" %} {{ pro.diaper.wet_pct }}%</span>
+                            <span><i class="pro-seg-solid"></i>{% trans "Solid" %} {{ pro.diaper.solid_pct }}%</span>
+                            <span><i class="pro-seg-dry"></i>{% trans "Dry" %} {{ pro.diaper.empty_pct }}%</span>
                         </div>
                     </div>
                 </div>
