@@ -84,6 +84,8 @@
         @keyframes pro-pulse { 0% { box-shadow: 0 0 0 0 rgba(35,149,86,.6); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
         @media (prefers-reduced-motion: reduce) { .pro-run-dot { animation: none; } }
         .pro-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .6rem; }
+        .pro-tiles-3 { grid-template-columns: repeat(3, 1fr); }
+        @media (max-width: 575px) { .pro-tiles-3 { grid-template-columns: repeat(2, 1fr); } }
         .pro-tile { border: 1px solid var(--bs-border-color); border-left-width: 3px; border-radius: .375rem; padding: .5rem .6rem; }
         .pro-tile .l { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
         .pro-tile .e { font-size: 1.15rem; font-weight: 700; }
@@ -220,13 +222,13 @@
                         {% endif %}
                         <div class="{% if w.is_live %}col-lg-5{% else %}col-12{% endif %}">
                             <div class="pro-label mb-2">{% trans "What happened · totals" %}</div>
-                            <div class="pro-tiles">
+                            <div class="pro-tiles pro-tiles-3">
                                 {% if pro.feeding %}<div class="pro-tile t-feeding"><div class="l"><i class="icon-feeding" aria-hidden="true"></i> {% trans "Feedings" %}</div><div class="e">{{ pro.feeding.count }}</div><div class="r">{% if pro.feeding.amount %}{{ pro.feeding.amount }} ml{% endif %}</div></div>{% endif %}
                                 {% if pro.diaper %}<div class="pro-tile t-diaper"><div class="l"><i class="icon-diaperchange" aria-hidden="true"></i> {% trans "Changes" %}</div><div class="e">{{ pro.diaper.count }}</div><div class="r">{{ pro.diaper.wet }}/{{ pro.diaper.solid }}</div></div>{% endif %}
                                 {% if pro.sleep %}<div class="pro-tile t-sleep"><div class="l"><i class="icon-sleep" aria-hidden="true"></i> {% trans "Sleep" %}</div><div class="e">{{ pro.sleep.total|duration_string:'m' }}</div><div class="r">{{ pro.sleep.count }}×</div></div>{% endif %}
                                 {% if pro.tummytime %}<div class="pro-tile t-tummy"><div class="l"><i class="icon-tummytime" aria-hidden="true"></i> {% trans "Tummy time" %}</div><div class="e">{{ pro.tummytime.total|duration_string:'m' }}</div><div class="r">{{ pro.tummytime.count }}×</div></div>{% endif %}
                                 {% if pro.pumping %}<div class="pro-tile t-pumping"><div class="l"><i class="icon-pumping" aria-hidden="true"></i> {% trans "Pumping" %}</div><div class="e">{{ pro.pumping.amount }} ml</div><div class="r">{{ pro.pumping.count }}×</div></div>{% endif %}
-                                {% if pro.medication %}<div class="pro-tile t-medication"><div class="l"><i class="icon-medication" aria-hidden="true"></i> {% trans "Doses" %}</div><div class="e">{{ pro.medication.count }}</div><div class="r"></div></div>{% endif %}
+                                {% if pro.medication %}<div class="pro-tile t-medication"><div class="l"><i class="icon-medication" aria-hidden="true"></i> {% trans "Medication" %}</div><div class="e">{{ pro.medication.count }}</div><div class="r"></div></div>{% endif %}
                             </div>
                         </div>
                     </div>
