@@ -60,6 +60,13 @@
         .pro-hbar .pro-seg-left { color: #04263a; }
         .pro-hbar .pro-seg-right { color: #fff; }
         .pro-hbar-total { flex: 0 0 auto; min-width: 20px; text-align: left; font-size: .9rem; font-weight: 700; color: var(--bs-body-color); }
+        .pro-avg-table-wrap { overflow-x: auto; }
+        .pro-avg-table { width: 100%; border-collapse: collapse; font-size: .72rem; }
+        .pro-avg-table th, .pro-avg-table td { padding: 3px 6px; text-align: right; white-space: nowrap; }
+        .pro-avg-table thead th { color: var(--bs-secondary-color); font-weight: 600; border-bottom: 1px solid var(--bs-border-color); }
+        .pro-avg-table tbody th { text-align: left; color: var(--bs-secondary-color); font-weight: 600; }
+        .pro-avg-table tbody td { color: var(--bs-body-color); font-variant-numeric: tabular-nums; }
+        .pro-avg-table tbody tr:not(:last-child) th, .pro-avg-table tbody tr:not(:last-child) td { border-bottom: 1px solid color-mix(in srgb, var(--bs-border-color) 50%, transparent); }
         /* keep small helper texts readable (override the card's category tint) */
         #dashboard-child-pro .pro-legend,
         #dashboard-child-pro .pro-note-hint,
@@ -351,12 +358,7 @@
                     {% if pro.feeding.averages %}
                         <div class="card card-dashboard card-feeding">
                             <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Averages" %}</div>
-                            <div class="card-body">
-                                {% if pro.feeding.averages.interval %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average interval" %}</span><span>{{ pro.feeding.averages.interval|duration_string:'m' }}</span></div>{% endif %}
-                                {% if pro.feeding.averages.duration %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average duration" %}</span><span>{{ pro.feeding.averages.duration|duration_string:'m' }}</span></div>{% endif %}
-                                {% if pro.feeding.averages.amount %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average amount" %}</span><span>{{ pro.feeding.averages.amount|floatformat }} ml</span></div>{% endif %}
-                                {% if pro.feeding.averages.per_day %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Feedings per day" %}</span><span>{{ pro.feeding.averages.per_day|floatformat }}</span></div>{% endif %}
-                            </div>
+                            <div class="card-body">{% include "dashboard/_pro_avg_table.html" with averages=pro.feeding.averages %}</div>
                         </div>
                     {% endif %}
                     {% if pro.pumping %}
@@ -473,10 +475,7 @@
                 {% if pro.diaper.averages %}
                     <div class="card card-dashboard card-diaperchange">
                         <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Averages" %}</div>
-                        <div class="card-body">
-                            {% if pro.diaper.averages.interval %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average interval" %}</span><span>{{ pro.diaper.averages.interval|duration_string:'m' }}</span></div>{% endif %}
-                            {% if pro.diaper.averages.per_day %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Changes per day" %}</span><span>{{ pro.diaper.averages.per_day|floatformat }}</span></div>{% endif %}
-                        </div>
+                        <div class="card-body">{% include "dashboard/_pro_avg_table.html" with averages=pro.diaper.averages %}</div>
                     </div>
                 {% endif %}
             </div>
@@ -538,13 +537,11 @@
                     <div class="pro-bars-x">{% for d in pro.sleep.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
                 </div>
             </div>
-            {% if pro.sleep.nap_avg or pro.sleep.sleep_avg %}
+            {% if pro.sleep.averages %}
                 <div class="card card-dashboard card-sleep">
                     <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Averages" %}</div>
                     <div class="card-body">
-                        {% if pro.sleep.nap_avg %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average nap duration" %}</span><span>{{ pro.sleep.nap_avg|duration_string:'m' }}</span></div>{% endif %}
-                        {% if pro.sleep.sleep_avg %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average sleep duration" %}</span><span>{{ pro.sleep.sleep_avg|duration_string:'m' }}</span></div>{% endif %}
-                        {% if pro.sleep.naps_per_day %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average naps per day" %}</span><span>{{ pro.sleep.naps_per_day|floatformat }}</span></div>{% endif %}
+                        {% include "dashboard/_pro_avg_table.html" with averages=pro.sleep.averages %}
                         <div class="small opacity-75 mt-1">{% trans "Nap = daytime sleep." %}</div>
                     </div>
                 </div>

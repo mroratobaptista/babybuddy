@@ -12,8 +12,7 @@ stays logic-free and this can be unit-tested in isolation.
 
 from datetime import datetime, time as dtime, timedelta
 
-from django.db.models import Avg, Count
-from django.db.models.functions import TruncDate
+from django.db.models import Avg
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -376,42 +375,115 @@ def _diaper_series(changes, end_date, days=7):
 # ---------------------------------------------------------------------------
 # All-time averages ("Averages" cards)
 # ---------------------------------------------------------------------------
-def _per_day_average(qs, field):
-    result = (
-        qs.annotate(_d=TruncDate(field))
-        .values("_d")
-        .annotate(_c=Count("id"))
-        .order_by()
-        .aggregate(avg=Avg("_c"))
-    )
-    return result["avg"]
+# Number of days each averaging window spans (for "per day" figures).
+_AVG_WINDOW_DAYS = {
+    "today": 1,
+    "yesterday": 1,
+    "3days": 3,
+    "7days": 7,
+    "14days": 14,
+    "30days": 30,
+}
 
 
-def _feeding_averages(child):
+def _fmt_dur(td):
+    """Compact duration for table cells: ``2h05`` / ``25min`` / ``—``."""
+    if not td:
+        return "—"
+    secs = int(td.total_seconds())
+    h, m = secs // 3600, (secs % 3600) // 60
+    return f"{h}h{m:02d}" if h else f"{m}min"
+
+
+def _fmt_float(value, decimals=1):
+    return f"{value:.{decimals}f}" if value else "—"
+
+
+def _win_filter(qs, field, bounds):
+    start, end = bounds
+    if start is not None:
+        qs = qs.filter(**{f"{field}__gte": start})
+    if end is not None:
+        qs = qs.filter(**{f"{field}__lt": end})
+    return qs
+
+
+def _feeding_averages(child, now):
     qs = models.Feeding.objects.filter(child=child)
     if not qs.exists():
         return None
-    agg = qs.aggregate(duration=Avg("duration"), amount=Avg("amount"))
-    freq = _cards._feeding_statistics(child)
-    interval = freq[-1]["btwn_average"] if freq else None
+    ranges = _pred_ranges(now)
+    use_end = Feeding.settings.feeding_diff_end
+    points = [
+        timezone.localtime(f.end if use_end else f.start) for f in qs.order_by("start")
+    ]
+    intervals = _average_intervals(points, now)
+    rows = []
+    for w in _PRED_WINDOWS:
+        wqs = _win_filter(qs, "start", ranges[w])
+        agg = wqs.aggregate(duration=Avg("duration"), amount=Avg("amount"))
+        count = wqs.count()
+        rows.append(
+            {
+                "label": _PRED_LABELS[w],
+                "cells": [
+                    _fmt_dur(intervals.get(w)),
+                    _fmt_dur(agg["duration"]),
+                    (f"{round(agg['amount'])}" if agg["amount"] else "—"),
+                    _fmt_float(count / _AVG_WINDOW_DAYS[w] if count else None),
+                ],
+            }
+        )
     return {
-        "interval": interval or None,
-        "duration": agg["duration"],
-        "amount": agg["amount"],
-        "per_day": _per_day_average(qs, "start"),
+        "cols": [_("Interval"), _("Duration"), _("Amount"), _("/day")],
+        "rows": rows,
     }
 
 
-def _diaper_averages(child):
+def _diaper_averages(child, now):
     qs = models.DiaperChange.objects.filter(child=child)
     if not qs.exists():
         return None
-    freq = _cards._diaperchange_statistics(child)
-    interval = freq[-1]["btwn_average"] if freq else None
-    return {
-        "interval": interval or None,
-        "per_day": _per_day_average(qs, "time"),
-    }
+    ranges = _pred_ranges(now)
+    points = [timezone.localtime(c.time) for c in qs.order_by("time")]
+    intervals = _average_intervals(points, now)
+    rows = []
+    for w in _PRED_WINDOWS:
+        wqs = _win_filter(qs, "time", ranges[w])
+        count = wqs.count()
+        rows.append(
+            {
+                "label": _PRED_LABELS[w],
+                "cells": [
+                    _fmt_dur(intervals.get(w)),
+                    _fmt_float(count / _AVG_WINDOW_DAYS[w] if count else None),
+                ],
+            }
+        )
+    return {"cols": [_("Interval"), _("/day")], "rows": rows}
+
+
+def _sleep_averages(child, now):
+    qs = models.Sleep.objects.filter(child=child)
+    if not qs.exists():
+        return None
+    ranges = _pred_ranges(now)
+    rows = []
+    for w in _PRED_WINDOWS:
+        wqs = _win_filter(qs, "start", ranges[w])
+        nap_qs = wqs.filter(nap=True)
+        nap_count = nap_qs.count()
+        rows.append(
+            {
+                "label": _PRED_LABELS[w],
+                "cells": [
+                    _fmt_dur(nap_qs.aggregate(d=Avg("duration"))["d"]),
+                    _fmt_dur(wqs.aggregate(d=Avg("duration"))["d"]),
+                    _fmt_float(nap_count / _AVG_WINDOW_DAYS[w] if nap_count else None),
+                ],
+            }
+        )
+    return {"cols": [_("Nap"), _("Sleep"), _("Naps/day")], "rows": rows}
 
 
 # ---------------------------------------------------------------------------
@@ -471,7 +543,7 @@ def _feeding_section(child, window, now, prediction):
         ),
         # Most recent feeding methods (newest first).
         "recent_methods": list(qs.order_by("-start")[:3]),
-        "averages": _feeding_averages(child),
+        "averages": _feeding_averages(child, now),
     }
 
 
@@ -504,7 +576,7 @@ def _diaper_section(child, window, now, prediction):
         "solid_pct": round(100 * solid / total) if total else 0,
         "empty_pct": round(100 * empty / total) if total else 0,
         "trend": _diaper_series(trend_changes, window["end_date"]),
-        "averages": _diaper_averages(child),
+        "averages": _diaper_averages(child, now),
     }
 
 
@@ -529,10 +601,6 @@ def _sleep_section(child, window, now, prediction):
             ).order_by("start")
         )
 
-    # All-time averages for the nap vs. sleep distinction (nap = daytime sleep).
-    nap_stats = _cards._nap_statistics(child)
-    sleep_stats = _cards._sleep_statistics(child)
-
     pairs = list(qs.values_list("start", "duration"))
     return {
         "last": last,
@@ -541,9 +609,7 @@ def _sleep_section(child, window, now, prediction):
         "total": total,
         "sleeps_today": sleeps_today,
         "trend": _duration_series(pairs, window["end_date"]),
-        "nap_avg": nap_stats["average"] if nap_stats else None,
-        "naps_per_day": nap_stats["avg_per_day"] if nap_stats else None,
-        "sleep_avg": sleep_stats["average"] if sleep_stats else None,
+        "averages": _sleep_averages(child, now),
     }
 
 

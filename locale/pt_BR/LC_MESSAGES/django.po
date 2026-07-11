@@ -2899,6 +2899,12 @@ msgstr "Alimentações por dia"
 msgid "Changes per day"
 msgstr "Trocas por dia"
 
+msgid "/day"
+msgstr "/dia"
+
+msgid "Naps/day"
+msgstr "Sonecas/dia"
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"

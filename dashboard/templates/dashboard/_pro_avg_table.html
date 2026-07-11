@@ -1,0 +1,19 @@
+{% load duration i18n %}
+<div class="pro-avg-table-wrap">
+    <table class="pro-avg-table">
+        <thead>
+            <tr>
+                <th></th>
+                {% for col in averages.cols %}<th>{{ col }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in averages.rows %}
+                <tr>
+                    <th>{{ row.label }}</th>
+                    {% for cell in row.cells %}<td>{{ cell }}</td>{% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
