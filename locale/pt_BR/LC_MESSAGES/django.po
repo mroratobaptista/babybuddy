@@ -2844,6 +2844,16 @@ msgid ""
 msgstr ""
 "Médias de todo o histórico registrado — não afetadas pelo filtro de período."
 
+msgid "7 days"
+msgstr "7 dias"
+
+msgid ""
+"Average interval between feedings · the most recent window drives the "
+"estimate."
+msgstr ""
+"Intervalo médio entre alimentações · a janela mais recente orienta a "
+"estimativa."
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"

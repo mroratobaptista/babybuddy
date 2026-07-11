@@ -120,10 +120,11 @@ class PredictionTestCase(TestCase):
             )
         prediction = dashboard_pro._feeding_prediction(self.child, self.now)
         self.assertIsNotNone(prediction)
-        self.assertEqual(prediction["used"], "day")
-        # Average start-to-start interval is 2 hours.
+        self.assertIn(prediction["used"], ("today", "3days", "7days"))
+        # Average start-to-start interval is 2 hours (the 3-day window always
+        # covers the events created above, regardless of the time of day).
         self.assertAlmostEqual(
-            prediction["averages"]["day"].total_seconds(),
+            prediction["averages"]["3days"].total_seconds(),
             timedelta(hours=2).total_seconds(),
             delta=1,
         )

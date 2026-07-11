@@ -31,9 +31,16 @@ PERIODS = (
     "all",
 )
 
-# The averaging windows used for predictions, mirroring the ones already used by
-# ``dashboard.templatetags.cards`` (past 3 days / past 2 weeks / all-time).
-_PRED_WINDOWS = ("day", "week", "all")
+# Averaging windows shown on the prediction cards. The predicted time itself is
+# driven by the most recent window that has data (_PRED_DRIVER).
+_PRED_WINDOWS = ("today", "yesterday", "3days", "7days")
+_PRED_DRIVER = ("today", "3days", "7days")
+_PRED_LABELS = {
+    "today": _("Today"),
+    "yesterday": _("Yesterday"),
+    "3days": _("3 days"),
+    "7days": _("7 days"),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -117,28 +124,40 @@ def _in_window(qs, field, window):
 # ---------------------------------------------------------------------------
 # Predictions
 # ---------------------------------------------------------------------------
-def _pred_bounds(now):
+def _pred_ranges(now):
+    """(start, end) bounds for each prediction window (``None`` = open bound)."""
+    today0 = now.replace(hour=0, minute=0, second=0, microsecond=0)
     return {
-        "day": now - timedelta(days=3),
-        "week": now - timedelta(weeks=2),
-        "all": None,
+        "today": (today0, None),
+        "yesterday": (today0 - timedelta(days=1), today0),
+        "3days": (today0 - timedelta(days=2), None),
+        "7days": (today0 - timedelta(days=6), None),
     }
+
+
+def _in_pred_range(t, bounds):
+    start, end = bounds
+    if start is not None and t < start:
+        return False
+    if end is not None and t >= end:
+        return False
+    return True
 
 
 def _average_intervals(points, now):
     """
     Average gap between consecutive ``points`` (ascending datetimes) for each
     prediction window.  ``points[i] - points[i - 1]`` counts toward a window when
-    the *previous* point falls inside it.
+    the *previous* point falls inside that window's date range.
     """
-    bounds = _pred_bounds(now)
+    ranges = _pred_ranges(now)
     totals = {w: timedelta(0) for w in _PRED_WINDOWS}
     counts = {w: 0 for w in _PRED_WINDOWS}
     for i in range(1, len(points)):
         prev, cur = points[i - 1], points[i]
         gap = cur - prev
-        for w, bound in bounds.items():
-            if bound is None or prev >= bound:
+        for w, bounds in ranges.items():
+            if _in_pred_range(prev, bounds):
                 totals[w] += gap
                 counts[w] += 1
     return {w: (totals[w] / counts[w] if counts[w] else None) for w in _PRED_WINDOWS}
@@ -149,7 +168,7 @@ def _average_gaps(pairs, now):
     Average "away" gap for (start, end) ``pairs`` ascending by start:
     ``pairs[i].start - pairs[i - 1].end`` (e.g. awake duration between sleeps).
     """
-    bounds = _pred_bounds(now)
+    ranges = _pred_ranges(now)
     totals = {w: timedelta(0) for w in _PRED_WINDOWS}
     counts = {w: 0 for w in _PRED_WINDOWS}
     for i in range(1, len(pairs)):
@@ -158,16 +177,16 @@ def _average_gaps(pairs, now):
         gap = cur_start - prev_end
         if gap.total_seconds() < 0:
             continue
-        for w, bound in bounds.items():
-            if bound is None or prev_end >= bound:
+        for w, bounds in ranges.items():
+            if _in_pred_range(prev_end, bounds):
                 totals[w] += gap
                 counts[w] += 1
     return {w: (totals[w] / counts[w] if counts[w] else None) for w in _PRED_WINDOWS}
 
 
 def _build_prediction(anchor, averages, now):
-    """Combine the last-event ``anchor`` with the best available average."""
-    used = next((w for w in _PRED_WINDOWS if averages.get(w)), None)
+    """Combine the last-event ``anchor`` with the most recent window that has data."""
+    used = next((w for w in _PRED_DRIVER if averages.get(w)), None)
     if anchor is None or used is None:
         return None
     predicted = anchor + averages[used]
@@ -176,7 +195,12 @@ def _build_prediction(anchor, averages, now):
         "predicted": predicted,
         "anchor": anchor,
         "used": used,
+        "applied": averages[used],
         "averages": averages,
+        "display": [
+            {"label": _PRED_LABELS[w], "value": averages.get(w), "used": w == used}
+            for w in _PRED_WINDOWS
+        ],
         "is_late": eta.total_seconds() < 0,
         "eta": abs(eta),
     }

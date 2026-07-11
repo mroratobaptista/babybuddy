@@ -23,14 +23,17 @@
         .pro-col-feeding .pro-col-title { border-color: var(--bs-primary); }
         .pro-col-diaper .pro-col-title { border-color: var(--bs-danger); }
         .pro-col-sleep .pro-col-title { border-color: var(--bs-secondary); }
-        .pro-eta { font-size: 2rem; font-weight: 700; line-height: 1; }
-        .pro-anchor { font-size: .8rem; opacity: .8; margin: .4rem 0 .6rem; }
-        .pro-avgs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
-        .pro-avg { text-align: center; padding: .4rem .2rem; border: 1px solid var(--bs-border-color); border-radius: .375rem; }
-        .pro-avg .win { font-size: .62rem; text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
-        .pro-avg .val { font-size: .8rem; font-weight: 700; }
-        .pro-avg.used { border-width: 2px; border-color: currentColor; }
-        .pro-note-hint { font-size: .68rem; opacity: .65; margin-top: .5rem; }
+        .pro-eta { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--bs-body-color); }
+        .pro-anchor { font-size: .8rem; margin: .4rem 0 .6rem; color: var(--bs-secondary-color); }
+        .pro-avgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; }
+        .pro-avg { text-align: center; padding: .4rem .2rem; border: 1px solid var(--bs-border-color); border-radius: .375rem; background: var(--bs-body-bg); color: var(--bs-body-color); }
+        .pro-avg .win { font-size: .6rem; text-transform: uppercase; letter-spacing: .03em; color: var(--bs-secondary-color); }
+        .pro-avg .val { font-size: .82rem; font-weight: 700; }
+        .pro-avg.used { border-width: 2px; }
+        .pro-col-feeding .pro-avg.used { border-color: var(--bs-primary); }
+        .pro-col-diaper .pro-avg.used { border-color: var(--bs-danger); }
+        .pro-col-sleep .pro-avg.used { border-color: var(--bs-secondary); }
+        .pro-note-hint { font-size: .68rem; margin-top: .5rem; color: var(--bs-secondary-color); }
         .pro-filter { display: flex; flex-wrap: wrap; gap: .3rem; }
         .pro-range { font-size: .72rem; opacity: .7; align-self: center; }
         .pro-chart { display: flex; align-items: flex-end; gap: 4px; height: 84px; margin: .25rem 0; }
@@ -236,11 +239,14 @@
                                 </div>
                                 <div class="pro-anchor">{% blocktrans with time=pro.feeding.last_base|time %}Last at {{ time }}{% endblocktrans %}</div>
                                 <div class="pro-avgs">
-                                    <div class="pro-avg {% if pro.feeding.prediction.used == 'day' %}used{% endif %}"><div class="win">{% trans "Day" %}</div><div class="val">{% if pro.feeding.prediction.averages.day %}{{ pro.feeding.prediction.averages.day|duration_string:'m' }}{% else %}—{% endif %}</div></div>
-                                    <div class="pro-avg {% if pro.feeding.prediction.used == 'week' %}used{% endif %}"><div class="win">{% trans "Week" %}</div><div class="val">{% if pro.feeding.prediction.averages.week %}{{ pro.feeding.prediction.averages.week|duration_string:'m' }}{% else %}—{% endif %}</div></div>
-                                    <div class="pro-avg {% if pro.feeding.prediction.used == 'all' %}used{% endif %}"><div class="win">{% trans "All" %}</div><div class="val">{% if pro.feeding.prediction.averages.all %}{{ pro.feeding.prediction.averages.all|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                                    {% for a in pro.feeding.prediction.display %}
+                                        <div class="pro-avg {% if a.used %}used{% endif %}">
+                                            <div class="win">{{ a.label }}</div>
+                                            <div class="val">{% if a.value %}{{ a.value|duration_string:'m' }}{% else %}—{% endif %}</div>
+                                        </div>
+                                    {% endfor %}
                                 </div>
-                                <div class="pro-note-hint">{% trans "Average interval between feedings · the day window drives the estimate." %}</div>
+                                <div class="pro-note-hint">{% trans "Average interval between feedings · the most recent window drives the estimate." %}</div>
                             </div>
                         </div>
                     {% endif %}
@@ -362,9 +368,12 @@
                             </div>
                             <div class="pro-anchor">{% blocktrans with time=pro.diaper.last.time|time %}Last at {{ time }}{% endblocktrans %}</div>
                             <div class="pro-avgs">
-                                <div class="pro-avg {% if pro.diaper.prediction.used == 'day' %}used{% endif %}"><div class="win">{% trans "Day" %}</div><div class="val">{% if pro.diaper.prediction.averages.day %}{{ pro.diaper.prediction.averages.day|duration_string:'m' }}{% else %}—{% endif %}</div></div>
-                                <div class="pro-avg {% if pro.diaper.prediction.used == 'week' %}used{% endif %}"><div class="win">{% trans "Week" %}</div><div class="val">{% if pro.diaper.prediction.averages.week %}{{ pro.diaper.prediction.averages.week|duration_string:'m' }}{% else %}—{% endif %}</div></div>
-                                <div class="pro-avg {% if pro.diaper.prediction.used == 'all' %}used{% endif %}"><div class="win">{% trans "All" %}</div><div class="val">{% if pro.diaper.prediction.averages.all %}{{ pro.diaper.prediction.averages.all|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                                {% for a in pro.diaper.prediction.display %}
+                                    <div class="pro-avg {% if a.used %}used{% endif %}">
+                                        <div class="win">{{ a.label }}</div>
+                                        <div class="val">{% if a.value %}{{ a.value|duration_string:'m' }}{% else %}—{% endif %}</div>
+                                    </div>
+                                {% endfor %}
                             </div>
                             <div class="pro-note-hint">{% trans "Past the estimate → the card turns into an alert." %}</div>
                         </div>
@@ -442,9 +451,12 @@
                         </div>
                         <div class="pro-anchor">{% blocktrans with time=pro.sleep.last.end|time %}Woke at {{ time }}{% endblocktrans %}</div>
                         <div class="pro-avgs">
-                            <div class="pro-avg {% if pro.sleep.prediction.used == 'day' %}used{% endif %}"><div class="win">{% trans "Day" %}</div><div class="val">{% if pro.sleep.prediction.averages.day %}{{ pro.sleep.prediction.averages.day|duration_string:'m' }}{% else %}—{% endif %}</div></div>
-                            <div class="pro-avg {% if pro.sleep.prediction.used == 'week' %}used{% endif %}"><div class="win">{% trans "Week" %}</div><div class="val">{% if pro.sleep.prediction.averages.week %}{{ pro.sleep.prediction.averages.week|duration_string:'m' }}{% else %}—{% endif %}</div></div>
-                            <div class="pro-avg {% if pro.sleep.prediction.used == 'all' %}used{% endif %}"><div class="win">{% trans "All" %}</div><div class="val">{% if pro.sleep.prediction.averages.all %}{{ pro.sleep.prediction.averages.all|duration_string:'m' }}{% else %}—{% endif %}</div></div>
+                            {% for a in pro.sleep.prediction.display %}
+                                <div class="pro-avg {% if a.used %}used{% endif %}">
+                                    <div class="win">{{ a.label }}</div>
+                                    <div class="val">{% if a.value %}{{ a.value|duration_string:'m' }}{% else %}—{% endif %}</div>
+                                </div>
+                            {% endfor %}
                         </div>
                         <div class="pro-note-hint">{% trans "Average awake duration between sleeps." %}</div>
                     </div>
