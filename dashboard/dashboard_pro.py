@@ -312,6 +312,36 @@ def _amount_series(pairs, end_date, days=7):
     ]
 
 
+def _breastfeeding_series(feedings, end_date, days=7):
+    """Per-day breastfeeding split by breast (left/right counts + duration)."""
+    raw = [
+        {"left": 0, "right": 0, "count": 0, "duration": timedelta(0)}
+        for _ in range(days)
+    ]
+    for f in feedings:
+        idx = (end_date - timezone.localtime(f.start).date()).days
+        if 0 <= idx < days:
+            slot = raw[days - 1 - idx]
+            slot["count"] += 1
+            if f.method in ("left breast", "both breasts"):
+                slot["left"] += 1
+            if f.method in ("right breast", "both breasts"):
+                slot["right"] += 1
+            if f.duration:
+                slot["duration"] += f.duration
+    return [
+        {
+            "left": raw[i]["left"],
+            "right": raw[i]["right"],
+            "count": raw[i]["count"],
+            "duration": raw[i]["duration"],
+            "date": _day_of(i, end_date, days),
+            "today": _day_of(i, end_date, days) == end_date,
+        }
+        for i in range(days)
+    ]
+
+
 def _diaper_series(changes, end_date, days=7):
     """Per-day diaper counts split by type (stacked wet/solid/dry + total)."""
     raw = [{"wet": 0, "solid": 0, "dry": 0, "changes": 0} for _ in range(days)]
@@ -358,6 +388,20 @@ def _feeding_section(child, window, now, prediction):
 
     pairs = list(qs.values_list("start", "amount"))
     starts = [p[0] for p in pairs]
+
+    # Last 7 days of breastfeedings for the per-day left/right breakdown.
+    trend_start = _aware(
+        datetime.combine(window["end_date"] - timedelta(days=6), dtime.min)
+    )
+    trend_end = _aware(datetime.combine(window["end_date"], dtime.max))
+    breast_feedings = qs.filter(
+        method__in=["left breast", "right breast", "both breasts"],
+        start__gte=trend_start,
+        start__lte=trend_end,
+    ).only("start", "method", "duration")
+    breast_series = _breastfeeding_series(breast_feedings, window["end_date"])
+    has_breast = any(d["left"] or d["right"] for d in breast_series)
+
     return {
         "last": last,
         "last_base": (last.end if Feeding.settings.feeding_diff_end else last.start),
@@ -375,6 +419,7 @@ def _feeding_section(child, window, now, prediction):
             else None
         ),
         "trend": _count_series(starts, window["end_date"]),
+        "breast_trend": breast_series if has_breast else None,
         # Per-day amount chart (only meaningful when amounts are recorded).
         "amount_trend": (
             _amount_series(pairs, window["end_date"])

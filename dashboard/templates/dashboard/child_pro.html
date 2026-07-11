@@ -44,6 +44,8 @@
         .pro-seg-wet { background: var(--bs-warning); }
         .pro-seg-solid { background: #7a5230; }
         .pro-seg-dry { background: var(--bs-gray-500); }
+        .pro-seg-left { background: var(--bs-primary); }
+        .pro-seg-right { background: #7c5cbf; }
         .pro-bars-x { display: flex; gap: 4px; }
         .pro-bars-x span { flex: 1; text-align: center; font-size: .6rem; }
         /* horizontal diaper bars (like the classic dashboard) */
@@ -55,6 +57,8 @@
         .pro-hbar .pro-seg-wet { color: #3a2b00; }
         .pro-hbar .pro-seg-solid { color: #fff; }
         .pro-hbar .pro-seg-dry { color: #212529; }
+        .pro-hbar .pro-seg-left { color: #04263a; }
+        .pro-hbar .pro-seg-right { color: #fff; }
         .pro-hbar-total { flex: 0 0 auto; min-width: 20px; text-align: left; font-size: .9rem; font-weight: 700; color: var(--bs-body-color); }
         /* keep small helper texts readable (override the card's category tint) */
         #dashboard-child-pro .pro-legend,
@@ -314,13 +318,28 @@
                             </ul>
                         </div>
                     {% endif %}
-                    {% if pro.feeding.breast %}
+                    {% if pro.feeding.breast_trend %}
                         <div class="card card-dashboard card-feeding">
-                            <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Breast · left vs right" %}</div>
+                            <div class="card-header">
+                                <a href="{% url 'core:feeding-list' %}"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Breastfeeding" %} · {% trans "Last 7 days" %}</a>
+                            </div>
                             <div class="card-body">
-                                <div class="pro-split">
-                                    <div><div class="n">{{ pro.feeding.breast.left_pct }}%</div><div class="l">{% trans "Left" %} · {{ pro.feeding.breast.left }}</div></div>
-                                    <div><div class="n">{{ pro.feeding.breast.right_pct }}%</div><div class="l">{% trans "Right" %} · {{ pro.feeding.breast.right }}</div></div>
+                                <div class="pro-hbars">
+                                    {% for d in pro.feeding.breast_trend %}
+                                        <div class="pro-hbar-row">
+                                            <span class="pro-hbar-day">{{ d.date|date:'D' }}</span>
+                                            <div class="pro-hbar"
+                                                 title="{{ d.left }} {% trans 'Left' %} / {{ d.right }} {% trans 'Right' %}">
+                                                {% if d.left %}<div class="progress-bar pro-seg-left" style="flex: {{ d.left }}">{{ d.left }}</div>{% endif %}
+                                                {% if d.right %}<div class="progress-bar pro-seg-right" style="flex: {{ d.right }}">{{ d.right }}</div>{% endif %}
+                                            </div>
+                                            <span class="pro-hbar-total">{% if d.duration %}{{ d.duration|duration_string:'m' }}{% endif %}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="pro-legend mt-2">
+                                    <span><i class="pro-seg-left"></i>{% trans "Left" %}</span>
+                                    <span><i class="pro-seg-right"></i>{% trans "Right" %}</span>
                                 </div>
                             </div>
                         </div>
