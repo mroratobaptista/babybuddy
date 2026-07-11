@@ -2872,6 +2872,21 @@ msgstr "Todas as alimentações (mamadeira, seio, etc.)"
 msgid "Breast only; both breasts counts on each side."
 msgstr "Só no seio; ambos os seios conta em cada lado."
 
+msgid "Averages"
+msgstr "Médias"
+
+msgid "Nap = daytime sleep."
+msgstr "Soneca = sono diurno."
+
+msgid "Sleeps today"
+msgstr "Sonos de hoje"
+
+msgid "Next sleep"
+msgstr "Próximo sono"
+
+msgid "nap"
+msgstr "soneca"
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"

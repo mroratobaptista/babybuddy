@@ -84,6 +84,8 @@
         .pro-tile.t-feeding { border-left-color: var(--bs-primary); }
         .pro-tile.t-diaper, .pro-tile.t-medication { border-left-color: var(--bs-danger); }
         .pro-tile.t-sleep { border-left-color: var(--bs-secondary); }
+        .pro-tile.t-tummy { border-left-color: var(--bs-success); }
+        .pro-tile.t-pumping { border-left-color: var(--bs-primary); }
         .pro-nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: .6rem; }
         .pro-num { border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .45rem .6rem; }
         .pro-num .n { font-size: 1.15rem; font-weight: 700; }
@@ -211,13 +213,13 @@
                         {% endif %}
                         <div class="{% if w.is_live %}col-lg-5{% else %}col-12{% endif %}">
                             <div class="pro-label mb-2">{% trans "What happened · totals" %}</div>
-                            <div class="pro-nums">
-                                {% if pro.feeding %}<div class="pro-num"><div class="n">{{ pro.feeding.count }}</div><div class="l">{% trans "Feedings" %}{% if pro.feeding.amount %} · {{ pro.feeding.amount }} ml{% endif %}</div></div>{% endif %}
-                                {% if pro.diaper %}<div class="pro-num"><div class="n">{{ pro.diaper.count }}</div><div class="l">{% trans "Changes" %} · {{ pro.diaper.wet }}/{{ pro.diaper.solid }}</div></div>{% endif %}
-                                {% if pro.sleep %}<div class="pro-num"><div class="n">{{ pro.sleep.total|duration_string:'m' }}</div><div class="l">{% trans "Sleep" %} · {{ pro.sleep.count }}</div></div>{% endif %}
-                                {% if pro.tummytime %}<div class="pro-num"><div class="n">{{ pro.tummytime.total|duration_string:'m' }}</div><div class="l">{% trans "Tummy time" %} · {{ pro.tummytime.count }}</div></div>{% endif %}
-                                {% if pro.pumping %}<div class="pro-num"><div class="n">{{ pro.pumping.amount }} ml</div><div class="l">{% trans "Pumping" %} · {{ pro.pumping.count }}</div></div>{% endif %}
-                                {% if pro.medication %}<div class="pro-num"><div class="n">{{ pro.medication.count }}</div><div class="l">{% trans "Doses" %}</div></div>{% endif %}
+                            <div class="pro-tiles">
+                                {% if pro.feeding %}<div class="pro-tile t-feeding"><div class="l"><i class="icon-feeding" aria-hidden="true"></i> {% trans "Feedings" %}</div><div class="e">{{ pro.feeding.count }}</div><div class="r">{% if pro.feeding.amount %}{{ pro.feeding.amount }} ml{% endif %}</div></div>{% endif %}
+                                {% if pro.diaper %}<div class="pro-tile t-diaper"><div class="l"><i class="icon-diaperchange" aria-hidden="true"></i> {% trans "Changes" %}</div><div class="e">{{ pro.diaper.count }}</div><div class="r">{{ pro.diaper.wet }}/{{ pro.diaper.solid }}</div></div>{% endif %}
+                                {% if pro.sleep %}<div class="pro-tile t-sleep"><div class="l"><i class="icon-sleep" aria-hidden="true"></i> {% trans "Sleep" %}</div><div class="e">{{ pro.sleep.total|duration_string:'m' }}</div><div class="r">{{ pro.sleep.count }}×</div></div>{% endif %}
+                                {% if pro.tummytime %}<div class="pro-tile t-tummy"><div class="l"><i class="icon-tummytime" aria-hidden="true"></i> {% trans "Tummy time" %}</div><div class="e">{{ pro.tummytime.total|duration_string:'m' }}</div><div class="r">{{ pro.tummytime.count }}×</div></div>{% endif %}
+                                {% if pro.pumping %}<div class="pro-tile t-pumping"><div class="l"><i class="icon-pumping" aria-hidden="true"></i> {% trans "Pumping" %}</div><div class="e">{{ pro.pumping.amount }} ml</div><div class="r">{{ pro.pumping.count }}×</div></div>{% endif %}
+                                {% if pro.medication %}<div class="pro-tile t-medication"><div class="l"><i class="icon-medication" aria-hidden="true"></i> {% trans "Doses" %}</div><div class="e">{{ pro.medication.count }}</div><div class="r"></div></div>{% endif %}
                             </div>
                         </div>
                     </div>
@@ -468,7 +470,7 @@
                 </div>
                 {% if pro.sleep.prediction %}
                     <div class="card card-dashboard card-sleep">
-                        <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Next nap" %}</div>
+                        <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Next sleep" %}</div>
                         <div class="card-body">
                             <div class="pro-eta">
                                 {{ pro.sleep.prediction.predicted|time }}
@@ -516,14 +518,25 @@
                     <div class="pro-bars-x">{% for d in pro.sleep.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
                 </div>
             </div>
-            {% if pro.sleep.naps_today %}
+            {% if pro.sleep.nap_avg or pro.sleep.sleep_avg %}
                 <div class="card card-dashboard card-sleep">
-                    <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Naps in period" %}</div>
+                    <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Averages" %}</div>
+                    <div class="card-body">
+                        {% if pro.sleep.nap_avg %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average nap duration" %}</span><span>{{ pro.sleep.nap_avg|duration_string:'m' }}</span></div>{% endif %}
+                        {% if pro.sleep.sleep_avg %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average sleep duration" %}</span><span>{{ pro.sleep.sleep_avg|duration_string:'m' }}</span></div>{% endif %}
+                        {% if pro.sleep.naps_per_day %}<div class="d-flex justify-content-between py-1"><span class="opacity-75">{% trans "Average naps per day" %}</span><span>{{ pro.sleep.naps_per_day|floatformat }}</span></div>{% endif %}
+                        <div class="small opacity-75 mt-1">{% trans "Nap = daytime sleep." %}</div>
+                    </div>
+                </div>
+            {% endif %}
+            {% if pro.sleep.sleeps_today %}
+                <div class="card card-dashboard card-sleep">
+                    <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Sleeps today" %}</div>
                     <ul class="list-group list-group-flush">
-                        {% for nap in pro.sleep.naps_today %}
+                        {% for s in pro.sleep.sleeps_today %}
                             <li class="list-group-item d-flex justify-content-between">
-                                <span>{{ nap.start|time }} – {{ nap.end|time }}</span>
-                                <span>{{ nap.duration|duration_string:'m' }}</span>
+                                <span>{{ s.start|time }} – {{ s.end|time }}{% if s.nap %} · {% trans "nap" %}{% endif %}</span>
+                                <span>{{ s.duration|duration_string:'m' }}</span>
                             </li>
                         {% endfor %}
                     </ul>

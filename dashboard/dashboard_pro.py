@@ -474,9 +474,9 @@ def _sleep_section(child, window, now, prediction):
         if s.duration:
             total += s.duration
 
-    naps_today = None
+    sleeps_today = None
     if window["is_live"]:
-        naps_today = list(
+        sleeps_today = list(
             models.Sleep.objects.filter(
                 child=child,
                 start__gte=window["start"],
@@ -484,14 +484,21 @@ def _sleep_section(child, window, now, prediction):
             ).order_by("start")
         )
 
+    # All-time averages for the nap vs. sleep distinction (nap = daytime sleep).
+    nap_stats = _cards._nap_statistics(child)
+    sleep_stats = _cards._sleep_statistics(child)
+
     pairs = list(qs.values_list("start", "duration"))
     return {
         "last": last,
         "prediction": prediction if window["is_live"] else None,
         "count": in_window.count(),
         "total": total,
-        "naps_today": naps_today,
+        "sleeps_today": sleeps_today,
         "trend": _duration_series(pairs, window["end_date"]),
+        "nap_avg": nap_stats["average"] if nap_stats else None,
+        "naps_per_day": nap_stats["avg_per_day"] if nap_stats else None,
+        "sleep_avg": sleep_stats["average"] if sleep_stats else None,
     }
 
 
