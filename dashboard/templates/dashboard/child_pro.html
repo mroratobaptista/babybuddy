@@ -31,9 +31,18 @@
         .pro-avg .val { font-size: .8rem; font-weight: 700; }
         .pro-avg.used { border-width: 2px; border-color: currentColor; }
         .pro-note-hint { font-size: .68rem; opacity: .65; margin-top: .5rem; }
-        .pro-bars { display: flex; align-items: flex-end; gap: 4px; height: 58px; margin: .25rem 0; }
-        .pro-bar { flex: 1; min-height: 3px; border-radius: 3px 3px 0 0; background: currentColor; opacity: .45; }
+        .pro-filter { display: flex; flex-wrap: wrap; gap: .3rem; }
+        .pro-range { font-size: .72rem; opacity: .7; align-self: center; }
+        .pro-chart { display: flex; align-items: flex-end; gap: 4px; height: 84px; margin: .25rem 0; }
+        .pro-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+        .pro-cnum { font-size: .58rem; font-weight: 700; line-height: 1; margin-bottom: 2px; }
+        .pro-bar { width: 100%; min-height: 3px; border-radius: 3px 3px 0 0; background: currentColor; opacity: .5; }
         .pro-bar-today { opacity: 1; }
+        .pro-bar-stack { width: 100%; min-height: 3px; border-radius: 3px 3px 0 0; overflow: hidden; display: flex; flex-direction: column-reverse; opacity: .85; }
+        .pro-bar-stack.today { opacity: 1; }
+        .pro-seg-wet { background: var(--bs-warning); }
+        .pro-seg-solid { background: #7a5230; }
+        .pro-seg-dry { background: var(--bs-gray-500); }
         .pro-bars-x { display: flex; gap: 4px; }
         .pro-bars-x span { flex: 1; text-align: center; font-size: .6rem; opacity: .6; }
         .pro-split { display: flex; gap: .4rem; }
@@ -74,36 +83,33 @@
                    href="{% url 'dashboard:dashboard-child' object.slug %}">
                     <i class="icon-dashboard" aria-hidden="true"></i> {% trans "Classic dashboard" %}
                 </a>
-                <span class="pro-label ms-2">{% trans "Period" %}</span>
-                <div class="btn-group btn-group-sm"
-                     role="group"
-                     aria-label="{% trans 'Period' %}">
-                    <a class="btn btn-outline-primary {% if w.period == 'day' %}active{% endif %}"
-                       href="?period=day&date={{ w.anchor|date:'Y-m-d' }}">{% trans "Today" %}</a>
-                    <a class="btn btn-outline-primary {% if w.period == 'week' %}active{% endif %}"
-                       href="?period=week&date={{ w.anchor|date:'Y-m-d' }}">{% trans "Week" %}</a>
-                    <a class="btn btn-outline-primary {% if w.period == 'month' %}active{% endif %}"
-                       href="?period=month&date={{ w.anchor|date:'Y-m-d' }}">{% trans "Month" %}</a>
-                    <a class="btn btn-outline-primary {% if w.period == 'all' %}active{% endif %}"
+                <span class="pro-label ms-1">{% trans "Period" %}</span>
+                <div class="pro-filter" role="group" aria-label="{% trans 'Period' %}">
+                    <a class="btn btn-sm btn-outline-primary {% if w.period == 'day' %}active{% endif %}"
+                       href="?period=day">{% trans "Today" %}</a>
+                    <a class="btn btn-sm btn-outline-primary {% if w.period == 'yesterday' %}active{% endif %}"
+                       href="?period=yesterday">{% trans "Yesterday" %}</a>
+                    <a class="btn btn-sm btn-outline-primary {% if w.period == '3days' %}active{% endif %}"
+                       href="?period=3days">{% trans "3 days" %}</a>
+                    <a class="btn btn-sm btn-outline-primary {% if w.period == 'week' %}active{% endif %}"
+                       href="?period=week">{% trans "Week" %}</a>
+                    <a class="btn btn-sm btn-outline-primary {% if w.period == 'lastweek' %}active{% endif %}"
+                       href="?period=lastweek">{% trans "Last week" %}</a>
+                    <a class="btn btn-sm btn-outline-primary {% if w.period == 'month' %}active{% endif %}"
+                       href="?period=month">{% trans "Month" %}</a>
+                    <a class="btn btn-sm btn-outline-primary {% if w.period == 'lastmonth' %}active{% endif %}"
+                       href="?period=lastmonth">{% trans "Last month" %}</a>
+                    <a class="btn btn-sm btn-outline-primary {% if w.period == 'all' %}active{% endif %}"
                        href="?period=all">{% trans "All" %}</a>
                 </div>
-                {% if w.period != 'all' %}
-                    <div class="btn-group btn-group-sm ms-auto-nav" role="group">
-                        <a class="btn btn-outline-secondary"
-                           href="?period={{ w.period }}&date={{ w.prev_date }}"
-                           aria-label="{% trans 'Previous' %}"><i class="icon-angle-left" aria-hidden="true"></i></a>
-                        <span class="btn btn-outline-secondary disabled">
-                            {% if w.period == 'day' %}{{ w.anchor|date:'D, d M Y' }}
-                            {% else %}{{ w.start_date|date:'d M' }} – {{ w.end_date|date:'d M Y' }}{% endif %}
-                        </span>
-                        {% if w.can_go_next %}
-                            <a class="btn btn-outline-secondary"
-                               href="?period={{ w.period }}&date={{ w.next_date }}"
-                               aria-label="{% trans 'Next' %}"><i class="icon-angle-right" aria-hidden="true"></i></a>
+                {% if w.start_date %}
+                    <span class="pro-range">
+                        {% if w.period == 'day' or w.period == 'yesterday' %}
+                            {{ w.start_date|date:'D, d M Y' }}
                         {% else %}
-                            <span class="btn btn-outline-secondary disabled"><i class="icon-angle-right" aria-hidden="true"></i></span>
+                            {{ w.start_date|date:'d M' }} – {{ w.end_date|date:'d M Y' }}
                         {% endif %}
-                    </div>
+                    </span>
                 {% endif %}
             </div>
             {# ---- Active timers (top, live elapsed) ---- #}
@@ -236,10 +242,13 @@
                     <div class="card card-dashboard card-feeding">
                         <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Last 7 days" %}</div>
                         <div class="card-body">
-                            <div class="pro-bars">
+                            <div class="pro-chart">
                                 {% for d in pro.feeding.trend %}
-                                    <div class="pro-bar {% if d.today %}pro-bar-today{% endif %}"
-                                         style="height: {{ d.pct }}%"></div>
+                                    <div class="pro-col">
+                                        <div class="pro-cnum">{{ d.count }}</div>
+                                        <div class="pro-bar {% if d.today %}pro-bar-today{% endif %}"
+                                             style="height: calc(64px * {{ d.pct }} / 100)"></div>
+                                    </div>
                                 {% endfor %}
                             </div>
                             <div class="pro-bars-x">{% for d in pro.feeding.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
@@ -327,13 +336,26 @@
                 <div class="card card-dashboard card-diaperchange">
                     <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Last 7 days" %}</div>
                     <div class="card-body">
-                        <div class="pro-bars">
+                        <div class="pro-chart">
                             {% for d in pro.diaper.trend %}
-                                <div class="pro-bar {% if d.today %}pro-bar-today{% endif %}"
-                                     style="height: {{ d.pct }}%"></div>
+                                <div class="pro-col">
+                                    <div class="pro-cnum">{{ d.changes }}</div>
+                                    <div class="pro-bar-stack {% if d.today %}today{% endif %}"
+                                         style="height: calc(64px * {{ d.pct }} / 100)"
+                                         title="{{ d.wet }} {% trans 'Wet' %} / {{ d.solid }} {% trans 'Solid' %} / {{ d.dry }} {% trans 'Dry' %}">
+                                        {% if d.wet %}<div class="pro-seg-wet" style="flex: {{ d.wet }}"></div>{% endif %}
+                                        {% if d.solid %}<div class="pro-seg-solid" style="flex: {{ d.solid }}"></div>{% endif %}
+                                        {% if d.dry %}<div class="pro-seg-dry" style="flex: {{ d.dry }}"></div>{% endif %}
+                                    </div>
+                                </div>
                             {% endfor %}
                         </div>
                         <div class="pro-bars-x">{% for d in pro.diaper.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
+                        <div class="pro-legend mt-2">
+                            <span><i class="pro-seg-wet"></i>{% trans "Wet" %}</span>
+                            <span><i class="pro-seg-solid"></i>{% trans "Solid" %}</span>
+                            <span><i class="pro-seg-dry"></i>{% trans "Dry" %}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -376,10 +398,13 @@
             <div class="card card-dashboard card-sleep">
                 <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Last 7 days" %}</div>
                 <div class="card-body">
-                    <div class="pro-bars">
+                    <div class="pro-chart">
                         {% for d in pro.sleep.trend %}
-                            <div class="pro-bar {% if d.today %}pro-bar-today{% endif %}"
-                                 style="height: {{ d.pct }}%"></div>
+                            <div class="pro-col">
+                                <div class="pro-cnum">{{ d.label }}</div>
+                                <div class="pro-bar {% if d.today %}pro-bar-today{% endif %}"
+                                     style="height: calc(64px * {{ d.pct }} / 100)"></div>
+                            </div>
                         {% endfor %}
                     </div>
                     <div class="pro-bars-x">{% for d in pro.sleep.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>

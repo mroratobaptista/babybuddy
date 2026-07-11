@@ -18,7 +18,16 @@ from core import models
 from core.models import Feeding
 
 # Period filter options exposed in the UI (the querystring ``?period=``).
-PERIODS = ("day", "week", "month", "all")
+PERIODS = (
+    "day",
+    "yesterday",
+    "3days",
+    "week",
+    "lastweek",
+    "month",
+    "lastmonth",
+    "all",
+)
 
 # The averaging windows used for predictions, mirroring the ones already used by
 # ``dashboard.templatetags.cards`` (past 3 days / past 2 weeks / all-time).
@@ -32,64 +41,65 @@ def _aware(naive):
     return timezone.make_aware(naive, timezone.get_current_timezone())
 
 
-def get_period_window(period, date_str):
-    """
-    Resolve the ``period`` / ``date`` querystring into a concrete time window.
+def _day_bounds(d):
+    """Return the (start, end) aware datetimes spanning the whole day ``d``."""
+    return (
+        _aware(datetime.combine(d, dtime.min)),
+        _aware(datetime.combine(d, dtime.max)),
+    )
 
-    :returns: a dict with ``period``, ``anchor`` (date), ``start`` / ``end``
-        (aware datetimes; ``start`` is ``None`` for "all"), ``is_live`` (whether
-        predictions should be shown), navigation helpers and a label.
+
+def get_period_window(period):
+    """
+    Resolve the ``period`` preset into a concrete time window.
+
+    Presets (relative to now, calendar-aware): day (today), yesterday, 3days,
+    week (current week), lastweek, month (current month), lastmonth, all.
+
+    :returns: a dict with ``period``, ``start`` / ``end`` (aware datetimes;
+        ``start`` is ``None`` for "all"), ``start_date`` / ``end_date`` and
+        ``is_live`` (predictions are only shown on "day" / today).
     """
     now = timezone.localtime()
     today = now.date()
+    if period not in PERIODS:
+        period = "day"
 
-    try:
-        anchor = datetime.strptime(date_str, "%Y-%m-%d").date() if date_str else today
-    except (ValueError, TypeError):
-        anchor = today
-
-    if period == "week":
-        start = _aware(datetime.combine(anchor - timedelta(days=6), dtime.min))
-        end = _aware(datetime.combine(anchor, dtime.max))
-        unit = timedelta(days=7)
+    if period == "yesterday":
+        start, end = _day_bounds(today - timedelta(days=1))
+    elif period == "3days":
+        start, _ = _day_bounds(today - timedelta(days=2))
+        _, end = _day_bounds(today)
+    elif period == "week":
+        monday = today - timedelta(days=today.weekday())
+        start, _ = _day_bounds(monday)
+        _, end = _day_bounds(today)
+    elif period == "lastweek":
+        monday = today - timedelta(days=today.weekday())
+        start, _ = _day_bounds(monday - timedelta(days=7))
+        _, end = _day_bounds(monday - timedelta(days=1))
     elif period == "month":
-        start = _aware(datetime.combine(anchor - timedelta(days=29), dtime.min))
-        end = _aware(datetime.combine(anchor, dtime.max))
-        unit = timedelta(days=30)
+        start, _ = _day_bounds(today.replace(day=1))
+        _, end = _day_bounds(today)
+    elif period == "lastmonth":
+        last_month_end = today.replace(day=1) - timedelta(days=1)
+        start, _ = _day_bounds(last_month_end.replace(day=1))
+        _, end = _day_bounds(last_month_end)
     elif period == "all":
-        period = "all"
         start = None
         end = now
-        unit = None
     else:
         period = "day"
-        start = _aware(datetime.combine(anchor, dtime.min))
-        end = _aware(datetime.combine(anchor, dtime.max))
-        unit = timedelta(days=1)
-
-    # Predictions are only meaningful "live" — a single day that is today.
-    is_live = period == "day" and anchor == today
-
-    prev_date = next_date = None
-    can_go_next = False
-    if unit is not None:
-        prev_date = (anchor - unit).strftime("%Y-%m-%d")
-        if anchor < today:
-            next_anchor = min(anchor + unit, today)
-            next_date = next_anchor.strftime("%Y-%m-%d")
-            can_go_next = True
+        start, end = _day_bounds(today)
 
     return {
         "period": period,
-        "anchor": anchor,
         "start": start,
         "end": end,
         "start_date": start.date() if start else None,
         "end_date": end.date(),
-        "is_live": is_live,
-        "prev_date": prev_date,
-        "next_date": next_date,
-        "can_go_next": can_go_next,
+        # Predictions are only meaningful "live" — the current day.
+        "is_live": period == "day",
     }
 
 
@@ -198,33 +208,84 @@ def _nap_prediction(child, now):
 
 
 # ---------------------------------------------------------------------------
-# Per-day trend series (fixed 7-day mini chart ending at the anchor date)
+# Per-day trend series (fixed 7-day mini chart ending at the window's end date)
 # ---------------------------------------------------------------------------
-def _trend(values, end_date, days=7, seconds=False):
-    """
-    Build a ``days``-long series ending at ``end_date``.
+def _day_of(series_index, end_date, days):
+    return end_date - timedelta(days=(days - 1 - series_index))
 
-    :param values: list of datetimes (counts) or (datetime, timedelta) tuples
-        when ``seconds`` is True (sums the duration seconds per day).
-    """
+
+def _count_series(times, end_date, days=7):
+    """Per-day event counts (bar height + the count shown on the bar)."""
     raw = [0] * days
-    for value in values:
-        dt = value[0] if seconds else value
+    for t in times:
+        idx = (end_date - timezone.localtime(t).date()).days
+        if 0 <= idx < days:
+            raw[days - 1 - idx] += 1
+    top = max(raw) or 1
+    return [
+        {
+            "pct": round(100 * raw[i] / top),
+            "count": raw[i],
+            "date": _day_of(i, end_date, days),
+            "today": _day_of(i, end_date, days) == end_date,
+        }
+        for i in range(days)
+    ]
+
+
+def _duration_series(pairs, end_date, days=7):
+    """Per-day total duration (bar height + an ``Nh``/``Nm`` label on the bar)."""
+    raw = [0.0] * days
+    for dt, dur in pairs:
+        if not dur:
+            continue
         idx = (end_date - timezone.localtime(dt).date()).days
         if 0 <= idx < days:
-            raw[days - 1 - idx] += value[1].total_seconds() if seconds else 1
+            raw[days - 1 - idx] += dur.total_seconds()
     top = max(raw) or 1
-    series = []
-    for i, amount in enumerate(raw):
-        day = end_date - timedelta(days=(days - 1 - i))
-        series.append(
+    out = []
+    for i in range(days):
+        secs = raw[i]
+        h, m = int(secs // 3600), int((secs % 3600) // 60)
+        label = f"{h}h" if h else (f"{m}m" if m else "")
+        out.append(
             {
-                "pct": round(100 * amount / top),
-                "date": day,
-                "today": day == end_date,
+                "pct": round(100 * secs / top),
+                "label": label,
+                "date": _day_of(i, end_date, days),
+                "today": _day_of(i, end_date, days) == end_date,
             }
         )
-    return series
+    return out
+
+
+def _diaper_series(changes, end_date, days=7):
+    """Per-day diaper counts split by type (stacked wet/solid/dry + total)."""
+    raw = [{"wet": 0, "solid": 0, "dry": 0, "changes": 0} for _ in range(days)]
+    for c in changes:
+        idx = (end_date - timezone.localtime(c.time).date()).days
+        if 0 <= idx < days:
+            slot = raw[days - 1 - idx]
+            slot["changes"] += 1
+            if c.wet:
+                slot["wet"] += 1
+            if c.solid:
+                slot["solid"] += 1
+            if not c.wet and not c.solid:
+                slot["dry"] += 1
+    top = max(s["changes"] for s in raw) or 1
+    return [
+        {
+            "pct": round(100 * raw[i]["changes"] / top),
+            "changes": raw[i]["changes"],
+            "wet": raw[i]["wet"],
+            "solid": raw[i]["solid"],
+            "dry": raw[i]["dry"],
+            "date": _day_of(i, end_date, days),
+            "today": _day_of(i, end_date, days) == end_date,
+        }
+        for i in range(days)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -259,7 +320,7 @@ def _feeding_section(child, window, now, prediction):
             if breast_total
             else None
         ),
-        "trend": _trend(starts, window["end_date"]),
+        "trend": _count_series(starts, window["end_date"]),
     }
 
 
@@ -273,7 +334,14 @@ def _diaper_section(child, window, now, prediction):
     solid = in_window.filter(solid=True).count()
     empty = in_window.filter(wet=False, solid=False).count()
     total = wet + solid + empty
-    times = list(qs.values_list("time", flat=True))
+    # Last 7 days of changes (with wet/solid) for the per-type stacked chart.
+    trend_start = _aware(
+        datetime.combine(window["end_date"] - timedelta(days=6), dtime.min)
+    )
+    trend_end = _aware(datetime.combine(window["end_date"], dtime.max))
+    trend_changes = qs.filter(time__gte=trend_start, time__lte=trend_end).only(
+        "time", "wet", "solid"
+    )
     return {
         "last": last,
         "prediction": prediction if window["is_live"] else None,
@@ -284,7 +352,7 @@ def _diaper_section(child, window, now, prediction):
         "wet_pct": round(100 * wet / total) if total else 0,
         "solid_pct": round(100 * solid / total) if total else 0,
         "empty_pct": round(100 * empty / total) if total else 0,
-        "trend": _trend(times, window["end_date"]),
+        "trend": _diaper_series(trend_changes, window["end_date"]),
     }
 
 
@@ -316,7 +384,7 @@ def _sleep_section(child, window, now, prediction):
         "count": in_window.count(),
         "total": total,
         "naps_today": naps_today,
-        "trend": _trend(pairs, window["end_date"], seconds=True),
+        "trend": _duration_series(pairs, window["end_date"]),
     }
 
 
@@ -455,10 +523,10 @@ def _not_registered(child):
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
-def build_context(child, period, date_str):
+def build_context(child, period):
     """Assemble the full Dashboard Pro context for ``child``."""
     now = timezone.localtime()
-    window = get_period_window(period, date_str)
+    window = get_period_window(period)
 
     feeding_pred = _feeding_prediction(child, now)
     diaper_pred = _diaper_prediction(child, now)

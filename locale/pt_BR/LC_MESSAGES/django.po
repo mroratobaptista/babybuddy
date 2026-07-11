@@ -2734,7 +2734,7 @@ msgid "Types (period)"
 msgstr "Tipos (período)"
 
 msgid "Dry"
-msgstr "Seca"
+msgstr "Seco"
 
 msgid "Past the estimate → the card turns into an alert."
 msgstr "Passou da estimativa → o card vira um alerta."
@@ -2811,6 +2811,18 @@ msgstr "%(count)s no período"
 
 msgid "Diaper change"
 msgstr "Troca de fralda"
+
+msgid "Yesterday"
+msgstr "Ontem"
+
+msgid "Last week"
+msgstr "Semana passada"
+
+msgid "Last month"
+msgstr "Mês passado"
+
+msgid "3 days"
+msgstr "3 dias"
 
 #, python-format
 #~ msgid "Amount: %(amount).0f"

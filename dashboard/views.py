@@ -54,6 +54,5 @@ class ChildDashboardPro(PermissionRequiredMixin, DetailView):
         context["pro"] = dashboard_pro.build_context(
             self.object,
             self.request.GET.get("period", "day"),
-            self.request.GET.get("date"),
         )
         return context

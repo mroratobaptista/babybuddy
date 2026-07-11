@@ -39,8 +39,12 @@ class DashboardProViewTestCase(TestCase):
         for query in [
             "",
             "?period=day",
+            "?period=yesterday",
+            "?period=3days",
             "?period=week",
+            "?period=lastweek",
             "?period=month",
+            "?period=lastmonth",
             "?period=all",
         ]:
             page = self.c.get(self._url(query))
@@ -48,7 +52,7 @@ class DashboardProViewTestCase(TestCase):
             self.assertTemplateUsed(page, "dashboard/child_pro.html")
 
     def test_invalid_params_fall_back(self):
-        page = self.c.get(self._url("?period=bogus&date=not-a-date"))
+        page = self.c.get(self._url("?period=bogus"))
         self.assertEqual(page.status_code, 200)
 
     def test_classic_dashboard_still_works(self):
@@ -59,26 +63,41 @@ class DashboardProViewTestCase(TestCase):
 
 class PeriodWindowTestCase(TestCase):
     def test_day_is_live_today(self):
-        window = dashboard_pro.get_period_window("day", None)
+        window = dashboard_pro.get_period_window("day")
         self.assertEqual(window["period"], "day")
         self.assertTrue(window["is_live"])
-        self.assertIsNotNone(window["start"])
+        self.assertEqual(window["start_date"], timezone.localdate())
 
     def test_all_has_no_start_and_not_live(self):
-        window = dashboard_pro.get_period_window("all", None)
+        window = dashboard_pro.get_period_window("all")
         self.assertEqual(window["period"], "all")
         self.assertIsNone(window["start"])
         self.assertFalse(window["is_live"])
 
     def test_bad_period_defaults_to_day(self):
-        window = dashboard_pro.get_period_window("nonsense", None)
+        window = dashboard_pro.get_period_window("nonsense")
         self.assertEqual(window["period"], "day")
 
-    def test_past_day_not_live(self):
-        yesterday = (timezone.localtime() - timedelta(days=1)).strftime("%Y-%m-%d")
-        window = dashboard_pro.get_period_window("day", yesterday)
+    def test_yesterday_is_bounded_and_not_live(self):
+        window = dashboard_pro.get_period_window("yesterday")
+        yesterday = timezone.localdate() - timedelta(days=1)
         self.assertFalse(window["is_live"])
-        self.assertTrue(window["can_go_next"])
+        self.assertEqual(window["start_date"], yesterday)
+        self.assertEqual(window["end_date"], yesterday)
+
+    def test_lastweek_ends_before_this_week(self):
+        window = dashboard_pro.get_period_window("lastweek")
+        today = timezone.localdate()
+        this_monday = today - timedelta(days=today.weekday())
+        self.assertFalse(window["is_live"])
+        self.assertLess(window["end_date"], this_monday)
+        # A full 7-day span (Mon..Sun).
+        self.assertEqual((window["end_date"] - window["start_date"]).days, 6)
+
+    def test_all_periods_are_resolvable(self):
+        for period in dashboard_pro.PERIODS:
+            window = dashboard_pro.get_period_window(period)
+            self.assertEqual(window["period"], period)
 
 
 class PredictionTestCase(TestCase):
