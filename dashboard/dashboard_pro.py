@@ -13,9 +13,11 @@ stays logic-free and this can be unit-tested in isolation.
 from datetime import datetime, time as dtime, timedelta
 
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from core import models
 from core.models import Feeding
+from dashboard.templatetags import cards as _cards
 
 # Period filter options exposed in the UI (the querystring ``?period=``).
 PERIODS = (
@@ -259,6 +261,27 @@ def _duration_series(pairs, end_date, days=7):
     return out
 
 
+def _amount_series(pairs, end_date, days=7):
+    """Per-day summed amount (bar height + the rounded amount on the bar)."""
+    raw = [0.0] * days
+    for dt, amt in pairs:
+        if not amt:
+            continue
+        idx = (end_date - timezone.localtime(dt).date()).days
+        if 0 <= idx < days:
+            raw[days - 1 - idx] += amt
+    top = max(raw) or 1
+    return [
+        {
+            "pct": round(100 * raw[i] / top),
+            "amount": round(raw[i]),
+            "date": _day_of(i, end_date, days),
+            "today": _day_of(i, end_date, days) == end_date,
+        }
+        for i in range(days)
+    ]
+
+
 def _diaper_series(changes, end_date, days=7):
     """Per-day diaper counts split by type (stacked wet/solid/dry + total)."""
     raw = [{"wet": 0, "solid": 0, "dry": 0, "changes": 0} for _ in range(days)]
@@ -303,7 +326,8 @@ def _feeding_section(child, window, now, prediction):
     right = in_window.filter(method__in=["right breast", "both breasts"]).count()
     breast_total = left + right
 
-    starts = list(qs.values_list("start", flat=True))
+    pairs = list(qs.values_list("start", "amount"))
+    starts = [p[0] for p in pairs]
     return {
         "last": last,
         "last_base": (last.end if Feeding.settings.feeding_diff_end else last.start),
@@ -321,6 +345,14 @@ def _feeding_section(child, window, now, prediction):
             else None
         ),
         "trend": _count_series(starts, window["end_date"]),
+        # Per-day amount chart (only meaningful when amounts are recorded).
+        "amount_trend": (
+            _amount_series(pairs, window["end_date"])
+            if any(a for _dt, a in pairs)
+            else None
+        ),
+        # Most recent feeding methods (newest first).
+        "recent_methods": list(qs.order_by("-start")[:3]),
     }
 
 
@@ -399,6 +431,9 @@ def _pumping_section(child, window):
         "last": last,
         "count": in_window.count(),
         "amount": round(amount) if amount else 0,
+        "trend": _amount_series(
+            list(qs.values_list("start", "amount")), window["end_date"]
+        ),
     }
 
 
@@ -423,6 +458,7 @@ def _tummytime_section(child, window):
         "count": in_window.count(),
         "total": total,
         "milestone": milestone,
+        "sessions": list(in_window.order_by("-end")[:8]),
     }
 
 
@@ -520,6 +556,65 @@ def _not_registered(child):
     return missing
 
 
+def _statistics_section(child):
+    """
+    Averages that are not surfaced by the prediction cards, reusing the classic
+    dashboard's statistics helpers (nap/sleep durations, weekly growth changes).
+    """
+    stats = []
+
+    nap = _cards._nap_statistics(child)
+    if nap:
+        stats.append(
+            {
+                "kind": "duration",
+                "value": nap["average"],
+                "title": _("Average nap duration"),
+            }
+        )
+        stats.append(
+            {
+                "kind": "float",
+                "value": nap["avg_per_day"],
+                "title": _("Average naps per day"),
+            }
+        )
+
+    sleep = _cards._sleep_statistics(child)
+    if sleep:
+        stats.append(
+            {
+                "kind": "duration",
+                "value": sleep["average"],
+                "title": _("Average sleep duration"),
+            }
+        )
+        stats.append(
+            {
+                "kind": "duration",
+                "value": sleep["btwn_average"],
+                "title": _("Average awake duration"),
+            }
+        )
+
+    for helper, title in (
+        (_cards._weight_statistics, _("Weight change per week")),
+        (_cards._height_statistics, _("Height change per week")),
+        (
+            _cards._head_circumference_statistics,
+            _("Head circumference change per week"),
+        ),
+        (_cards._bmi_statistics, _("BMI change per week")),
+    ):
+        result = helper(child)
+        if result:
+            stats.append(
+                {"kind": "float", "value": result["change_weekly"], "title": title}
+            )
+
+    return stats or None
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -558,6 +653,7 @@ def build_context(child, period):
         "notes": _notes_section(child),
         "temperature": _temperature_section(child, window),
         "growth": _growth_section(child),
+        "statistics": _statistics_section(child),
         "timers": _timers_section(child),
         "not_registered": _not_registered(child),
         "now": now,

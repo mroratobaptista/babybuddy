@@ -2824,6 +2824,18 @@ msgstr "Mês passado"
 msgid "3 days"
 msgstr "3 dias"
 
+msgid "Amount · last 7 days"
+msgstr "Quantidade · últimos 7 dias"
+
+msgid "Total ml per day"
+msgstr "Total de ml por dia"
+
+msgid "Recent methods"
+msgstr "Métodos recentes"
+
+msgid "ml per day (last 7 days)"
+msgstr "ml por dia (últimos 7 dias)"
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"

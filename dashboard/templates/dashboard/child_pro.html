@@ -230,7 +230,9 @@
                         </div>
                     {% endif %}
                     <div class="card card-dashboard card-feeding">
-                        <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Last feeding" %}</div>
+                        <div class="card-header">
+                            <a href="{% url 'core:feeding-list' %}"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Last feeding" %}</a>
+                        </div>
                         <div class="card-body">
                             <span class="card-title"><strong>{{ pro.feeding.last_base|deltasince|duration_string:'m' }} {% trans "ago" %}</strong></span>
                             <div class="card-text">
@@ -254,6 +256,41 @@
                             <div class="pro-bars-x">{% for d in pro.feeding.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
                         </div>
                     </div>
+                    {% if pro.feeding.amount_trend %}
+                        <div class="card card-dashboard card-feeding">
+                            <div class="card-header">
+                                <i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Amount · last 7 days" %}
+                            </div>
+                            <div class="card-body">
+                                <div class="pro-chart">
+                                    {% for d in pro.feeding.amount_trend %}
+                                        <div class="pro-col">
+                                            <div class="pro-cnum">{{ d.amount }}</div>
+                                            <div class="pro-bar {% if d.today %}pro-bar-today{% endif %}"
+                                                 style="height: calc(64px * {{ d.pct }} / 100)"></div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="pro-bars-x">{% for d in pro.feeding.amount_trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
+                                <div class="small opacity-75 mt-1">{% trans "Total ml per day" %}</div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if pro.feeding.recent_methods %}
+                        <div class="card card-dashboard card-feeding">
+                            <div class="card-header">
+                                <i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Recent methods" %}
+                            </div>
+                            <ul class="list-group list-group-flush">
+                                {% for f in pro.feeding.recent_methods %}
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>{{ f.get_method_display }}</span>
+                                        <span class="opacity-75 small">{% if forloop.first %}{% trans "most recent" %}{% else %}{{ f.start|date:'d/m H:i' }}{% endif %}</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
                     {% if pro.feeding.breast %}
                         <div class="card card-dashboard card-feeding">
                             <div class="card-header"><i class="icon-feeding pull-left" aria-hidden="true"></i> {% trans "Breast · left vs right" %}</div>
@@ -267,13 +304,26 @@
                     {% endif %}
                     {% if pro.pumping %}
                         <div class="card card-dashboard card-pumping">
-                            <div class="card-header"><i class="icon-pumping pull-left" aria-hidden="true"></i> {% trans "Pumping" %}</div>
+                            <div class="card-header">
+                                <a href="{% url 'core:pumping-list' %}"><i class="icon-pumping pull-left" aria-hidden="true"></i> {% trans "Pumping" %}</a>
+                            </div>
                             <div class="card-body">
                                 <span class="card-title"><strong>{{ pro.pumping.last.start|deltasince|duration_string:'m' }} {% trans "ago" %}</strong></span>
                                 <div class="card-text">
                                     {{ pro.pumping.last.start|time }}{% if pro.pumping.last.amount %} · {{ pro.pumping.last.amount }} ml{% endif %}<br>
                                     {% blocktrans with count=pro.pumping.count amount=pro.pumping.amount %}{{ count }} in period · {{ amount }} ml{% endblocktrans %}
                                 </div>
+                                <div class="pro-chart mt-2">
+                                    {% for d in pro.pumping.trend %}
+                                        <div class="pro-col">
+                                            <div class="pro-cnum">{{ d.amount }}</div>
+                                            <div class="pro-bar {% if d.today %}pro-bar-today{% endif %}"
+                                                 style="height: calc(64px * {{ d.pct }} / 100)"></div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="pro-bars-x">{% for d in pro.pumping.trend %}<span>{{ d.date|date:'D' }}</span>{% endfor %}</div>
+                                <div class="small opacity-75 mt-1">{% trans "ml per day (last 7 days)" %}</div>
                             </div>
                         </div>
                     {% endif %}
@@ -306,7 +356,9 @@
                     </div>
                 {% endif %}
                 <div class="card card-dashboard card-diaperchange">
-                    <div class="card-header"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Last change" %}</div>
+                    <div class="card-header">
+                        <a href="{% url 'core:diaperchange-list' %}"><i class="icon-diaperchange pull-left" aria-hidden="true"></i> {% trans "Last change" %}</a>
+                    </div>
                     <div class="card-body">
                         <span class="card-title"><strong>{{ pro.diaper.last.time|deltasince|duration_string:'m' }} {% trans "ago" %}</strong></span>
                         <div class="card-text">
@@ -387,7 +439,9 @@
                 </div>
             {% endif %}
             <div class="card card-dashboard card-sleep">
-                <div class="card-header"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Last sleep" %}</div>
+                <div class="card-header">
+                    <a href="{% url 'core:sleep-list' %}"><i class="icon-sleep pull-left" aria-hidden="true"></i> {% trans "Last sleep" %}</a>
+                </div>
                 <div class="card-body">
                     <span class="card-title"><strong>{{ pro.sleep.last.end|deltasince|duration_string:'m' }} {% trans "ago" %}</strong></span>
                     <div class="card-text">
@@ -427,7 +481,7 @@
     {% endif %}
 </div>
 {# ===================== HEALTH & ROUTINE ===================== #}
-{% if pro.medication or pro.growth or pro.notes or pro.tummytime or pro.temperature %}
+{% if pro.medication or pro.growth or pro.notes or pro.tummytime or pro.temperature or pro.statistics %}
     <h5 class="text-uppercase opacity-75 mt-4 mb-3"
         style="letter-spacing:.05em;
                font-size:.9rem">{% trans "Health & routine" %}</h5>
@@ -435,7 +489,9 @@
         {% if pro.medication %}
             <div class="col-lg-8">
                 <div class="card card-dashboard card-medication">
-                    <div class="card-header"><i class="icon-medication pull-left" aria-hidden="true"></i> {% trans "Medication" %}</div>
+                    <div class="card-header">
+                        <a href="{% url 'core:medication-list' %}"><i class="icon-medication pull-left" aria-hidden="true"></i> {% trans "Medication" %}</a>
+                    </div>
                     <div class="card-body">
                         {% if pro.medication.next_dose %}
                             <div class="d-flex align-items-center border rounded p-2 mb-2">
@@ -480,7 +536,9 @@
         {% if pro.notes %}
             <div class="col-lg-8">
                 <div class="card card-dashboard card-statistics">
-                    <div class="card-header"><i class="icon-note pull-left" aria-hidden="true"></i> {% trans "Latest notes" %}</div>
+                    <div class="card-header">
+                        <a href="{% url 'core:note-list' %}"><i class="icon-note pull-left" aria-hidden="true"></i> {% trans "Latest notes" %}</a>
+                    </div>
                     <div class="card-body">
                         {% for note in pro.notes %}
                             <div class="border-start border-3 ps-2 mb-2">
@@ -498,7 +556,9 @@
         {% if pro.tummytime %}
             <div class="col-lg-4">
                 <div class="card card-dashboard card-tummytime">
-                    <div class="card-header"><i class="icon-tummytime pull-left" aria-hidden="true"></i> {% trans "Tummy time" %}</div>
+                    <div class="card-header">
+                        <a href="{% url 'core:tummytime-list' %}"><i class="icon-tummytime pull-left" aria-hidden="true"></i> {% trans "Tummy time" %}</a>
+                    </div>
                     <div class="card-body">
                         <span class="card-title"><strong>{{ pro.tummytime.last.end|deltasince|duration_string:'m' }} {% trans "ago" %}</strong></span>
                         <div class="card-text">
@@ -506,16 +566,45 @@
                             {% if pro.tummytime.milestone %}<br>{{ pro.tummytime.milestone }}{% endif %}
                         </div>
                     </div>
+                    {% if pro.tummytime.sessions %}
+                        <ul class="list-group list-group-flush">
+                            {% for s in pro.tummytime.sessions %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>{{ s.end|date:'d/m H:i' }}</span>
+                                    <span>{{ s.duration|duration_string:'m' }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
                 </div>
             </div>
         {% endif %}
         {% if pro.temperature %}
             <div class="col-lg-4">
                 <div class="card card-dashboard card-statistics">
-                    <div class="card-header"><i class="icon-temperature pull-left" aria-hidden="true"></i> {% trans "Temperature" %}</div>
+                    <div class="card-header">
+                        <a href="{% url 'core:temperature-list' %}"><i class="icon-temperature pull-left" aria-hidden="true"></i> {% trans "Temperature" %}</a>
+                    </div>
                     <div class="card-body">
                         <span class="card-title"><strong>{{ pro.temperature.last.temperature }}°</strong></span>
                         <div class="card-text">{{ pro.temperature.last.time|date:'d/m H:i' }} · {% blocktrans with count=pro.temperature.count %}{{ count }} in period{% endblocktrans %}</div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        {% if pro.statistics %}
+            <div class="col-lg-8">
+                <div class="card card-dashboard card-statistics">
+                    <div class="card-header"><i class="icon-graph pull-left" aria-hidden="true"></i> {% trans "Statistics" %}</div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for s in pro.statistics %}
+                                <div class="col-md-6 d-flex justify-content-between border-bottom py-1">
+                                    <span class="opacity-75 small">{{ s.title }}</span>
+                                    <span>{% if s.kind == 'duration' %}{{ s.value|duration_string:'m' }}{% else %}{{ s.value|floatformat }}{% endif %}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
