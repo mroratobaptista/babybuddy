@@ -2836,6 +2836,14 @@ msgstr "Métodos recentes"
 msgid "ml per day (last 7 days)"
 msgstr "ml por dia (últimos 7 dias)"
 
+msgid "overall"
+msgstr "geral"
+
+msgid ""
+"Averages over all recorded history — not affected by the period filter."
+msgstr ""
+"Médias de todo o histórico registrado — não afetadas pelo filtro de período."
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"

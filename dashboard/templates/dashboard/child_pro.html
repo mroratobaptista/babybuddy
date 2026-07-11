@@ -194,7 +194,7 @@
                                     {% endif %}
                                     {% if pro.predictions.medication %}
                                         <div class="pro-tile t-medication">
-                                            <div class="l"><i class="icon-medication" aria-hidden="true"></i> {% trans "Dose" %}</div>
+                                            <div class="l"><i class="icon-medication" aria-hidden="true"></i> {% trans "Medication" %}</div>
                                             <div class="e">{{ pro.predictions.medication.next_dose_time|time }}</div>
                                             <div class="r">{% if pro.predictions.medication.next_dose_ready %}<span class="badge bg-success">{% trans "ready" %}</span>{% else %}{{ pro.predictions.medication.next_dose_time|date:'d/m' }}{% endif %}</div>
                                         </div>
@@ -607,8 +607,12 @@
         {% if pro.statistics %}
             <div class="col-lg-8">
                 <div class="card card-dashboard card-statistics">
-                    <div class="card-header"><i class="icon-graph pull-left" aria-hidden="true"></i> {% trans "Statistics" %}</div>
+                    <div class="card-header">
+                        <i class="icon-graph pull-left" aria-hidden="true"></i> {% trans "Statistics" %}
+                        <span class="badge bg-secondary ms-1">{% trans "overall" %}</span>
+                    </div>
                     <div class="card-body">
+                        <div class="small opacity-75 mb-2">{% trans "Averages over all recorded history — not affected by the period filter." %}</div>
                         <div class="row">
                             {% for s in pro.statistics %}
                                 <div class="col-md-6 d-flex justify-content-between border-bottom py-1">
