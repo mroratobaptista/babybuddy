@@ -809,6 +809,201 @@ def _statistics_section(child):
 
 
 # ---------------------------------------------------------------------------
+# Day timeline (one 0–24h row per day)
+# ---------------------------------------------------------------------------
+# Long windows ("month" / "all") are capped to this many day-rows so the page
+# stays reasonable; the template shows a "last N of M days" note when it bites.
+_TIMELINE_CAP_DAYS = 31
+
+
+def _hm(dt):
+    """Local ``HH:MM`` for a marker/segment label."""
+    return timezone.localtime(dt).strftime("%H:%M")
+
+
+def _earliest_event_date(child):
+    """Local date of the child's very first timeline-relevant event (or ``None``)."""
+    firsts = []
+    for model, field in (
+        (models.Sleep, "start"),
+        (models.Feeding, "start"),
+        (models.DiaperChange, "time"),
+        (models.Medication, "time"),
+        (models.TummyTime, "start"),
+    ):
+        dt = (
+            model.objects.filter(child=child)
+            .order_by(field)
+            .values_list(field, flat=True)
+            .first()
+        )
+        if dt:
+            firsts.append(timezone.localtime(dt).date())
+    return min(firsts) if firsts else None
+
+
+def _timeline_density(rendered):
+    """(row height px, dense flag) so rows stay legible as the day count grows."""
+    if rendered <= 1:
+        return 42, False
+    if rendered <= 3:
+        return 32, False
+    if rendered <= 7:
+        return 24, False
+    if rendered <= 14:
+        return 17, True
+    return 11, True
+
+
+def _timeline_section(child, window):
+    """
+    Per-day rows for the horizontal day timeline.  Each row spans 00–24h with
+    sleep drawn as filled blocks (night vs. nap), the awake time being the gaps,
+    and feeding/diaper/medication/tummy-time as point markers.  Sleep that crosses
+    midnight is clipped per day, so a 22h→06h sleep shows on both days.
+    """
+    end_date = window["end_date"]
+    if window["start_date"] is not None:
+        total_days = (end_date - window["start_date"]).days + 1
+    else:
+        earliest = _earliest_event_date(child)
+        if earliest is None:
+            return None
+        total_days = (end_date - earliest).days + 1
+    total_days = max(total_days, 1)
+
+    rendered = min(total_days, _TIMELINE_CAP_DAYS)
+    render_start = end_date - timedelta(days=rendered - 1)
+    hidden = total_days - rendered
+
+    range_start = _aware(datetime.combine(render_start, dtime.min))
+    range_end = _aware(datetime.combine(end_date, dtime.max))
+
+    today = timezone.localdate()
+    rows = []
+    index = {}
+    for i in range(rendered):
+        d = render_start + timedelta(days=i)
+        row = {"date": d, "today": d == today, "sleeps": [], "markers": []}
+        rows.append(row)
+        index[d] = row
+
+    def _day0(d):
+        return _aware(datetime.combine(d, dtime.min))
+
+    # Sleep segments, clipped to each day (this is what splits across midnight).
+    sleeps = (
+        models.Sleep.objects.filter(
+            child=child, start__lte=range_end, end__gte=range_start
+        )
+        .only("start", "end", "nap")
+        .order_by("start")
+    )
+    for s in sleeps:
+        s_end = s.end or timezone.now()
+        d = timezone.localtime(s.start).date()
+        last = timezone.localtime(s_end).date()
+        while d <= last:
+            row = index.get(d)
+            if row is not None:
+                base = _day0(d)
+                seg_start = max(s.start, base)
+                seg_end = min(s_end, base + timedelta(days=1))
+                if seg_end > seg_start:
+                    start_h = (seg_start - base).total_seconds() / 3600
+                    end_h = (seg_end - base).total_seconds() / 3600
+                    row["sleeps"].append(
+                        {
+                            "left": round(start_h / 24 * 100, 3),
+                            "width": round((end_h - start_h) / 24 * 100, 3),
+                            "nap": s.nap,
+                            "cat": _("Nap") if s.nap else _("Night sleep"),
+                            "time": f"{_hm(seg_start)}–{_hm(seg_end)}",
+                            "detail": _fmt_dur(seg_end - seg_start),
+                        }
+                    )
+            d += timedelta(days=1)
+
+    # Point markers (feeding / diaper / medication / tummy time).  Each carries a
+    # short ``detail`` used by the hover tooltip.
+    def _marker(dt, kind, cat, detail):
+        lt = timezone.localtime(dt)
+        row = index.get(lt.date())
+        if row is None:
+            return
+        frac = (dt - _day0(lt.date())).total_seconds() / 3600
+        row["markers"].append(
+            {
+                "left": round(frac / 24 * 100, 3),
+                "kind": kind,
+                "cat": cat,
+                "time": lt.strftime("%H:%M"),
+                "detail": detail,
+            }
+        )
+
+    for f in models.Feeding.objects.filter(
+        child=child, start__gte=range_start, start__lte=range_end
+    ).only("start", "method", "amount"):
+        detail = str(f.get_method_display())
+        if f.amount:
+            detail = f"{detail} · {round(f.amount)} ml"
+        _marker(f.start, "feed", _("Feeding"), detail)
+
+    for c in models.DiaperChange.objects.filter(
+        child=child, time__gte=range_start, time__lte=range_end
+    ).only("time", "wet", "solid"):
+        attrs = []
+        if c.wet:
+            attrs.append(str(_("Wet")))
+        if c.solid:
+            attrs.append(str(_("Solid")))
+        if not attrs:
+            attrs.append(str(_("Dry")))
+        _marker(c.time, "diap", _("Diaper"), " / ".join(attrs))
+
+    for m in models.Medication.objects.filter(
+        child=child, time__gte=range_start, time__lte=range_end
+    ).only("time", "name", "dosage", "dosage_unit"):
+        detail = m.name
+        if m.dosage:
+            detail = f"{detail} · {m.dosage:g} {m.get_dosage_unit_display()}"
+        _marker(m.time, "med", _("Medication"), detail)
+
+    for t in models.TummyTime.objects.filter(
+        child=child, start__gte=range_start, start__lte=range_end
+    ).only("start", "duration"):
+        _marker(
+            t.start,
+            "tummy",
+            _("Tummy time"),
+            _fmt_dur(t.duration) if t.duration else "",
+        )
+
+    # Hide an empty timeline — except on the live day, where the empty 0–24h row
+    # is the point (it fills in as the day goes), so "Today" always shows it.
+    if not window["is_live"] and not any(
+        row["sleeps"] or row["markers"] for row in rows
+    ):
+        return None
+
+    rowh, dense = _timeline_density(rendered)
+    return {
+        "rows": rows,
+        "axis": [
+            {"label": f"{h:02d}", "left": round(h / 24 * 100, 3)}
+            for h in range(0, 25, 3)
+        ],
+        "single": rendered == 1,
+        "rendered": rendered,
+        "total_days": total_days,
+        "hidden": hidden,
+        "rowh": rowh,
+        "dense": dense,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 def build_context(child, period):
@@ -827,6 +1022,7 @@ def build_context(child, period):
 
     return {
         "window": window,
+        "timeline": _timeline_section(child, window),
         "predictions": {
             "feeding": feeding_pred if window["is_live"] else None,
             "diaper": diaper_pred if window["is_live"] else None,

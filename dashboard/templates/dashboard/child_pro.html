@@ -1,5 +1,5 @@
 {% extends 'babybuddy/page.html' %}
-{% load duration i18n %}
+{% load duration i18n l10n %}
 {% block title %}
     {% trans "Dashboard Pro" %} - {{ object }}
 {% endblock %}
@@ -107,6 +107,64 @@
         .pro-progress-seg { display: flex; height: 14px; border-radius: 20px; overflow: hidden; background: var(--bs-border-color); margin: .4rem 0; }
         .pro-legend { display: flex; flex-wrap: wrap; gap: .75rem; font-size: .72rem; }
         .pro-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+        /* ---- Day timeline (one 0–24h row per day) ---- */
+        #dashboard-child-pro { --pro-lbl: 82px; --pro-night: #4a5896; --pro-nap: #8590d4; --pro-track: var(--bs-tertiary-bg, #e9edf3); }
+        .pro-tl-legend { display: flex; flex-wrap: wrap; gap: .35rem 1rem; font-size: .74rem; color: var(--bs-secondary-color); margin-bottom: .85rem; }
+        .pro-tl-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+        .pro-tl-sw { display: inline-block; width: 20px; height: 10px; border-radius: 3px; }
+        .pro-tl-sw.night { background: var(--pro-night); }
+        .pro-tl-sw.nap { background: var(--pro-nap); }
+        .pro-tl-sw.awake { background: var(--pro-track); border: 1px solid var(--bs-border-color); }
+        .pro-tl-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--bs-body-bg); }
+        .pro-tl-dot.feed { background: var(--bs-primary); }
+        .pro-tl-dot.diap { background: var(--bs-warning); }
+        .pro-tl-dot.med { background: var(--bs-danger); }
+        .pro-tl-dot.tummy { background: var(--bs-success); }
+        .pro-tl-row { display: grid; grid-template-columns: var(--pro-lbl) 1fr; align-items: center; gap: .5rem; }
+        .pro-tl-row + .pro-tl-row { margin-top: 5px; }
+        .pro-tl-dense .pro-tl-row + .pro-tl-row { margin-top: 3px; }
+        .pro-tl-lbl { font-size: .72rem; color: var(--bs-secondary-color); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .pro-tl-lbl .wd { color: var(--bs-body-color); font-weight: 600; text-transform: capitalize; }
+        .pro-tl-row.today .pro-tl-lbl .wd { color: var(--bs-primary); }
+        .pro-tl-track { position: relative; height: var(--pro-rowh, 24px); background: var(--pro-track); border-radius: 5px; overflow: hidden;
+            background-image: repeating-linear-gradient(90deg, var(--bs-border-color) 0 1px, transparent 1px calc(100% / 8)); }
+        .pro-tl-track.today { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--bs-primary) 55%, transparent); }
+        .pro-tl-sleep { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+        .pro-tl-sleep.night { background: var(--pro-night); }
+        .pro-tl-sleep.nap { background: var(--pro-nap); }
+        .pro-tl-mk { position: absolute; top: 0; bottom: 0; width: 2px; transform: translateX(-1px); color: var(--bs-primary); }
+        .pro-tl-mk::before { content: ""; position: absolute; inset: 0; background: currentColor; opacity: .9; }
+        .pro-tl-mk::after { content: ""; position: absolute; left: 50%; bottom: -1px; width: 6px; height: 6px; transform: translateX(-50%);
+            border-radius: 50%; background: currentColor; box-shadow: 0 0 0 1.5px var(--bs-body-bg); }
+        .pro-tl-dense .pro-tl-mk::after { display: none; }
+        .pro-tl-mk.feed { color: var(--bs-primary); }
+        .pro-tl-mk.diap { color: var(--bs-warning); }
+        .pro-tl-mk.med { color: var(--bs-danger); }
+        .pro-tl-mk.tummy { color: var(--bs-success); }
+        .pro-tl-axis { margin-top: .4rem; padding-left: calc(var(--pro-lbl) + .5rem); }
+        .pro-tl-ticks { position: relative; height: 1rem; }
+        .pro-tl-ticks span { position: absolute; transform: translateX(-50%); font-size: .64rem; color: var(--bs-secondary-color); font-variant-numeric: tabular-nums; }
+        .pro-tl-ticks span:first-child { transform: none; }
+        .pro-tl-ticks span:last-child { transform: translateX(-100%); }
+        /* legend as toggles + hover tooltip */
+        .pro-tl-toggle { display: inline-flex; align-items: center; gap: .35rem; padding: .12rem .55rem; font: inherit; font-size: .74rem;
+            color: var(--bs-body-color); background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: 999px; cursor: pointer; }
+        .pro-tl-toggle[aria-pressed="false"] { opacity: .4; text-decoration: line-through; }
+        .pro-tl-toggle:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
+        .pro-tl-legend-note { display: inline-flex; align-items: center; gap: .35rem; color: var(--bs-secondary-color); }
+        .pro-tl.hide-night .pro-tl-sleep.night,
+        .pro-tl.hide-nap .pro-tl-sleep.nap,
+        .pro-tl.hide-feed .pro-tl-mk.feed,
+        .pro-tl.hide-diap .pro-tl-mk.diap,
+        .pro-tl.hide-med .pro-tl-mk.med,
+        .pro-tl.hide-tummy .pro-tl-mk.tummy { display: none; }
+        .pro-tl-sleep, .pro-tl-mk { cursor: pointer; }
+        .pro-tl-tip { position: fixed; z-index: 1080; pointer-events: none; max-width: 250px; padding: .35rem .55rem;
+            background: var(--bs-body-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); border-radius: .375rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: .74rem; line-height: 1.35; opacity: 0; transition: opacity .08s; }
+        .pro-tl-tip.show { opacity: 1; }
+        .pro-tl-tip .cat { font-weight: 700; }
+        .pro-tl-tip .dt { color: var(--bs-secondary-color); }
     </style>
     {% with w=pro.window %}
         <div id="dashboard-child-pro">
@@ -234,6 +292,59 @@
                     </div>
                 </div>
             </div>
+            {# ---- Day timeline (0–24h, one row per day) ---- #}
+            {% if pro.timeline %}
+                <div class="card card-dashboard card-statistics">
+                    <div class="card-header">
+                        <i class="icon-timer pull-left" aria-hidden="true"></i> {% trans "Day timeline" %}
+                        {% if not pro.timeline.single %}<span class="badge bg-secondary ms-1">{% blocktrans with n=pro.timeline.rendered %}{{ n }} days{% endblocktrans %}</span>{% endif %}
+                    </div>
+                    <div class="card-body">
+                        {% localize off %}
+                        <div class="pro-tl-legend" role="group" aria-label="{% trans 'Toggle events' %}">
+                            <button type="button" class="pro-tl-toggle" data-cat="night" aria-pressed="true"><i class="pro-tl-sw night"></i>{% trans "Night sleep" %}</button>
+                            <button type="button" class="pro-tl-toggle" data-cat="nap" aria-pressed="true"><i class="pro-tl-sw nap"></i>{% trans "Nap" %}</button>
+                            <button type="button" class="pro-tl-toggle" data-cat="feed" aria-pressed="true"><i class="pro-tl-dot feed"></i>{% trans "Feeding" %}</button>
+                            <button type="button" class="pro-tl-toggle" data-cat="diap" aria-pressed="true"><i class="pro-tl-dot diap"></i>{% trans "Diaper" %}</button>
+                            <button type="button" class="pro-tl-toggle" data-cat="med" aria-pressed="true"><i class="pro-tl-dot med"></i>{% trans "Medication" %}</button>
+                            <button type="button" class="pro-tl-toggle" data-cat="tummy" aria-pressed="true"><i class="pro-tl-dot tummy"></i>{% trans "Tummy time" %}</button>
+                            <span class="pro-tl-legend-note"><i class="pro-tl-sw awake"></i>{% trans "Awake" %}</span>
+                        </div>
+                        <div class="pro-tl {% if pro.timeline.dense %}pro-tl-dense{% endif %}"
+                             style="--pro-rowh: {{ pro.timeline.rowh }}px">
+                            {% for row in pro.timeline.rows %}
+                                <div class="pro-tl-row {% if row.today %}today{% endif %}">
+                                    <div class="pro-tl-lbl">
+                                        {% if pro.timeline.single %}<span class="wd">{{ row.date|date:'D' }}</span>, {{ row.date|date:'d M' }}{% else %}<span class="wd">{{ row.date|date:'D' }}</span> {{ row.date|date:'d/m' }}{% endif %}
+                                    </div>
+                                    <div class="pro-tl-track {% if row.today %}today{% endif %}">
+                                        {% for s in row.sleeps %}
+                                            <div class="pro-tl-sleep {% if s.nap %}nap{% else %}night{% endif %}"
+                                                 style="left: {{ s.left }}%; width: {{ s.width }}%"
+                                                 data-cat="{{ s.cat }}" data-time="{{ s.time }}" data-detail="{{ s.detail }}"
+                                                 aria-label="{{ s.cat }} {{ s.time }} · {{ s.detail }}"></div>
+                                        {% endfor %}
+                                        {% for m in row.markers %}
+                                            <div class="pro-tl-mk {{ m.kind }}" style="left: {{ m.left }}%"
+                                                 data-cat="{{ m.cat }}" data-time="{{ m.time }}" data-detail="{{ m.detail }}"
+                                                 aria-label="{{ m.cat }} {{ m.time }}{% if m.detail %} · {{ m.detail }}{% endif %}"></div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="pro-tl-axis">
+                            <div class="pro-tl-ticks">
+                                {% for t in pro.timeline.axis %}<span style="left: {{ t.left }}%">{{ t.label }}</span>{% endfor %}
+                            </div>
+                        </div>
+                        <div class="small opacity-75 mt-1">
+                            {% if pro.timeline.hidden %}{% blocktrans with shown=pro.timeline.rendered total=pro.timeline.total_days %}Showing the last {{ shown }} of {{ total }} days.{% endblocktrans %}{% else %}{% trans "Hours 00–24 · one row per day." %}{% endif %}
+                        </div>
+                        {% endlocalize %}
+                    </div>
+                </div>
+            {% endif %}
             {# ===================== 3 COLUMNS ===================== #}
             <div class="row">
                 {# ---------- FEEDING ---------- #}
@@ -728,4 +839,67 @@
     {% else %}
         <script type="application/javascript">BabyBuddy.Dashboard.watch('dashboard-child-pro', false);</script>
     {% endif %}
+    <script type="application/javascript">
+        (function () {
+            var KEY = 'bb-timeline-hidden';
+            var CATS = ['night', 'nap', 'feed', 'diap', 'med', 'tummy'];
+            function getHidden() {
+                try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; }
+            }
+            function setHidden(a) {
+                try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (e) {}
+            }
+            function apply() {
+                var hidden = getHidden();
+                document.querySelectorAll('.pro-tl').forEach(function (tl) {
+                    CATS.forEach(function (c) { tl.classList.toggle('hide-' + c, hidden.indexOf(c) !== -1); });
+                });
+                document.querySelectorAll('.pro-tl-toggle').forEach(function (btn) {
+                    btn.setAttribute('aria-pressed', hidden.indexOf(btn.dataset.cat) === -1 ? 'true' : 'false');
+                });
+            }
+            var tip = null;
+            function position(t, x, y) {
+                var pad = 14;
+                var w = t.offsetWidth, h = t.offsetHeight;
+                var left = x + pad, top = y + pad;
+                if (left + w > window.innerWidth - 4) left = x - w - pad;
+                if (top + h > window.innerHeight - 4) top = y - h - pad;
+                t.style.left = Math.max(4, left) + 'px';
+                t.style.top = Math.max(4, top) + 'px';
+            }
+            function showTip(el, x, y) {
+                if (!tip) { tip = document.createElement('div'); tip.className = 'pro-tl-tip'; document.body.appendChild(tip); }
+                var detail = el.dataset.detail || '';
+                tip.innerHTML = '<span class="cat"></span> <span class="dt"></span>' + (detail ? '<br><span class="det"></span>' : '');
+                tip.querySelector('.cat').textContent = el.dataset.cat || '';
+                tip.querySelector('.dt').textContent = el.dataset.time || '';
+                if (detail) tip.querySelector('.det').textContent = detail;
+                position(tip, x, y);
+                tip.classList.add('show');
+            }
+            function hideTip() { if (tip) tip.classList.remove('show'); }
+            document.addEventListener('click', function (e) {
+                var btn = e.target.closest('.pro-tl-toggle');
+                if (!btn) return;
+                var hidden = getHidden(), i = hidden.indexOf(btn.dataset.cat);
+                if (i === -1) hidden.push(btn.dataset.cat); else hidden.splice(i, 1);
+                setHidden(hidden); apply();
+            });
+            document.addEventListener('mouseover', function (e) {
+                var el = e.target.closest('.pro-tl-sleep, .pro-tl-mk');
+                if (el) showTip(el, e.clientX, e.clientY);
+            });
+            document.addEventListener('mousemove', function (e) {
+                if (!tip || !tip.classList.contains('show')) return;
+                var el = e.target.closest('.pro-tl-sleep, .pro-tl-mk');
+                if (el) position(tip, e.clientX, e.clientY); else hideTip();
+            });
+            document.addEventListener('mouseout', function (e) {
+                if (e.target.closest('.pro-tl-sleep, .pro-tl-mk')) hideTip();
+            });
+            if (document.readyState !== 'loading') apply();
+            else document.addEventListener('DOMContentLoaded', apply);
+        })();
+    </script>
 {% endblock %}

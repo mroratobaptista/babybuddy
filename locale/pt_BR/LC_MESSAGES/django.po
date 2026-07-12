@@ -2905,6 +2905,30 @@ msgstr "/dia"
 msgid "Naps/day"
 msgstr "Sonecas/dia"
 
+msgid "Day timeline"
+msgstr "Linha do tempo do dia"
+
+msgid "%(n)s days"
+msgstr "%(n)s dias"
+
+msgid "Night sleep"
+msgstr "Sono noturno"
+
+msgid "Awake"
+msgstr "Acordado"
+
+msgid "Diaper"
+msgstr "Fralda"
+
+msgid "Showing the last %(shown)s of %(total)s days."
+msgstr "Mostrando os últimos %(shown)s de %(total)s dias."
+
+msgid "Hours 00–24 · one row per day."
+msgstr "Horas 00–24 · uma linha por dia."
+
+msgid "Toggle events"
+msgstr "Mostrar/ocultar eventos"
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"
