@@ -988,6 +988,7 @@ def _timeline_section(child, window):
         return None
 
     rowh, dense = _timeline_density(rendered)
+    now = timezone.localtime()
     return {
         "rows": rows,
         "axis": [
@@ -1000,6 +1001,12 @@ def _timeline_section(child, window):
         "hidden": hidden,
         "rowh": rowh,
         "dense": dense,
+        # Vertical "now" line at the current clock time — shown on every filter
+        # (the x-axis is always 00–24h, so it's a useful reference on any day).
+        "now_pct": round(
+            (now.hour + now.minute / 60 + now.second / 3600) / 24 * 100, 3
+        ),
+        "show_now": True,
     }
 
 

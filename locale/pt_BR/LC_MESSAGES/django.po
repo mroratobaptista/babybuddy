@@ -2929,6 +2929,9 @@ msgstr "Horas 00–24 · uma linha por dia."
 msgid "Toggle events"
 msgstr "Mostrar/ocultar eventos"
 
+msgid "now"
+msgstr "agora"
+
 #, python-format
 #~ msgid "Amount: %(amount).0f"
 #~ msgstr "Quantidade: %(amount).0f"
